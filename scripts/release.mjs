@@ -20,7 +20,9 @@ process.chdir(root)
 
 function sh (cmd, opts = {}) {
   try {
-    return execSync(cmd, { stdio: opts.capture ? 'pipe' : 'inherit', encoding: 'utf8' }).toString().trim()
+    const out = execSync(cmd, { stdio: opts.capture ? 'pipe' : 'inherit', encoding: 'utf8' })
+    // execSync returns null in inherit mode; only capture mode gives us a string.
+    return out == null ? '' : out.toString().trim()
   } catch (e) {
     if (opts.allowFail) throw e
     console.error(`\n✗ Command failed (exit ${e.status}): ${cmd}`)
