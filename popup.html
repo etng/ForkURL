@@ -19,7 +19,8 @@
     padding: 10px 14px;
     border-bottom: 1px solid #d0d7de;
   }
-  .header h1 { font-size: 13px; font-weight: 600; }
+  .header h1 { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .brand-icon { width: 18px; height: 18px; border-radius: 4px; }
   .header a {
     font-size: 11px;
     color: #57606a;
@@ -69,7 +70,7 @@
 </head>
 <body>
   <div class="header">
-    <h1>🔱 ForkURL</h1>
+    <h1><img src="icons/icon128.png" alt="" class="brand-icon"> ForkURL</h1>
     <a id="open-options">设置</a>
   </div>
   <div id="content" class="list"></div>

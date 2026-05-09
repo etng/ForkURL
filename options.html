@@ -14,7 +14,8 @@
     line-height: 1.5;
   }
   .wrap { max-width: 820px; margin: 0 auto; }
-  h1 { font-size: 20px; margin-bottom: 6px; }
+  h1 { font-size: 20px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+  .brand-icon { width: 28px; height: 28px; border-radius: 6px; }
   .sub { color: #57606a; margin-bottom: 24px; font-size: 13px; }
   .card {
     background: #fff;
@@ -277,7 +278,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>🔱 ForkURL 设置</h1>
+  <h1><img src="icons/icon128.png" alt="" class="brand-icon"> ForkURL 设置</h1>
   <p class="sub">配置远程规则源、启用/禁用规则、可视化编辑自定义规则。</p>
 
   <div class="card">
