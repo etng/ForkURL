@@ -1,0 +1,149 @@
+name: Rule Submission
+
+on:
+  issues:
+    types: [opened, edited, labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  # ─── Validate on issue open / edit ─────────────────────────────────────────
+  validate:
+    if: |
+      github.event_name == 'issues' &&
+      contains(github.event.issue.labels.*.name, 'rule-submission')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run validator
+        id: validate
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set +e
+          echo "$ISSUE_BODY" | node .github/scripts/apply-submission.mjs validate > /tmp/report.md
+          echo "exit=$?" >> $GITHUB_OUTPUT
+          cat /tmp/report.md
+
+      - name: Comment on issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/report.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+  # ─── Apply on /approve from owner or collaborator ──────────────────────────
+  approve:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue &&
+      contains(github.event.issue.labels.*.name, 'rule-submission') &&
+      startsWith(github.event.comment.body, '/approve')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check actor permission
+        id: perm
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor
+            });
+            const ok = ['admin', 'maintain', 'write'].includes(data.permission);
+            core.setOutput('ok', ok ? 'yes' : 'no');
+            if (!ok) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `@${context.actor} 没有写权限，无法 \`/approve\`。`
+              });
+            }
+
+      - uses: actions/checkout@v4
+        if: steps.perm.outputs.ok == 'yes'
+
+      - name: Configure git
+        if: steps.perm.outputs.ok == 'yes'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply submission
+        if: steps.perm.outputs.ok == 'yes'
+        id: apply
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set +e
+          echo "$ISSUE_BODY" | node .github/scripts/apply-submission.mjs apply > /tmp/report.md
+          rc=$?
+          cat /tmp/report.md
+          echo "rc=$rc" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Commit & push
+        if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          if git diff --quiet rules.json; then
+            echo "No changes to rules.json"
+          else
+            git add rules.json
+            git commit -m "rules: apply submission from #${ISSUE_NUMBER}
+
+          ${ISSUE_TITLE}
+
+          Approved by @${{ github.actor }}"
+            git push origin HEAD:main
+          fi
+
+      - name: Comment & close on success
+        if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/report.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              state: 'closed',
+              state_reason: 'completed'
+            });
+
+      - name: Comment on failure
+        if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('/tmp/report.md', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

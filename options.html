@@ -156,6 +156,25 @@
   }
   .help code { background: #eaeef2; padding: 0 4px; border-radius: 3px; font-size: 11px; }
 
+  .cta-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+  }
+  .cta {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #d0d7de; border-radius: 8px;
+    text-decoration: none; color: #24292f;
+    background: #fafbfc;
+    transition: border-color .15s, transform .1s;
+  }
+  .cta:hover { border-color: #0969da; transform: translateY(-1px); }
+  .cta-icon { font-size: 22px; flex-shrink: 0; }
+  .cta-text { display: flex; flex-direction: column; min-width: 0; }
+  .cta-text strong { font-size: 13px; }
+  .cta-text span { font-size: 11px; color: #57606a; }
+
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
     width: 32px; height: 28px;
@@ -239,6 +258,9 @@
     .ip-cell:hover { background: #21262d; border-color: #30363d; color: #58a6ff; }
     .ip-foot { border-top-color: #30363d; color: #8b949e; }
     .ip-foot a { color: #58a6ff; }
+    .cta { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+    .cta:hover { border-color: #58a6ff; }
+    .cta-text span { color: #8b949e; }
   }
 </style>
 </head>
@@ -286,6 +308,17 @@
   </div>
 
   <div class="card">
+    <h2>扩展图标库（在线）</h2>
+    <p class="meta" style="margin-bottom:8px">开启后，图标选择器可搜索 200,000+ 个开源图标（来自 <a href="https://iconify.design" target="_blank">Iconify</a>，包含 Simple Icons / Lucide 完整集合）。选中的图标会自动缓存到本地，之后离线可用。</p>
+    <div class="row">
+      <label class="cb"><input type="checkbox" id="ext-icons-toggle"> <span>启用 Iconify 在线图标搜索</span></label>
+      <span style="flex:1"></span>
+      <button id="clear-icon-cache">清空图标缓存</button>
+      <span id="icon-cache-meta" class="meta"></span>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>导入 / 导出</h2>
     <p class="meta" style="margin-bottom:8px">导出当前的自定义规则、远程地址和启停状态；导入时可选择合并或覆盖。</p>
     <div class="row">
@@ -293,6 +326,29 @@
       <button id="import-btn">📥 导入配置文件</button>
       <input id="import-file" type="file" accept="application/json" style="display:none">
       <span id="io-status" class="meta"></span>
+    </div>
+  </div>
+
+  <div class="card cta-card">
+    <h2>关于 ForkURL</h2>
+    <p class="meta" style="margin-bottom:12px">开源的 Chrome 扩展，欢迎反馈、贡献规则、点 Star。</p>
+    <div class="cta-row">
+      <a class="cta" href="https://github.com/etng/ForkURL" target="_blank">
+        <span class="cta-icon">🔗</span>
+        <span class="cta-text"><strong>GitHub 仓库</strong><span>etng/ForkURL · 源码与文档</span></span>
+      </a>
+      <a class="cta" href="https://github.com/etng/ForkURL/issues/new?template=submit-rule.yml" target="_blank">
+        <span class="cta-icon">📝</span>
+        <span class="cta-text"><strong>提交新规则</strong><span>通过 Issue 表单提交，自动合并到默认源</span></span>
+      </a>
+      <a class="cta" href="https://github.com/etng/ForkURL" target="_blank" id="star-cta">
+        <span class="cta-icon">⭐</span>
+        <span class="cta-text"><strong>Star 一下</strong><span>觉得有用？给个鼓励</span></span>
+      </a>
+      <a class="cta" href="https://github.com/sponsors/etng" target="_blank">
+        <span class="cta-icon">💛</span>
+        <span class="cta-text"><strong>赞助作者</strong><span>请作者喝杯咖啡</span></span>
+      </a>
     </div>
   </div>
 </div>

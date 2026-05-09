@@ -8,7 +8,9 @@ const STORAGE_KEYS = {
   remoteUpdatedAt: 'remoteUpdatedAt',
   remoteError: 'remoteError',
   customGroups: 'customGroups',
-  disabled: 'disabled'
+  disabled: 'disabled',
+  extIcons: 'extIcons',
+  iconCache: 'iconCache'
 }
 
 export async function getState () {
@@ -18,7 +20,9 @@ export async function getState () {
     STORAGE_KEYS.remoteUpdatedAt,
     STORAGE_KEYS.remoteError,
     STORAGE_KEYS.customGroups,
-    STORAGE_KEYS.disabled
+    STORAGE_KEYS.disabled,
+    STORAGE_KEYS.extIcons,
+    STORAGE_KEYS.iconCache
   ])
   return {
     remoteUrl: data.remoteUrl || '',
@@ -26,7 +30,9 @@ export async function getState () {
     remoteUpdatedAt: data.remoteUpdatedAt || 0,
     remoteError: data.remoteError || '',
     customGroups: data.customGroups || [],
-    disabled: data.disabled || {}
+    disabled: data.disabled || {},
+    extIcons: !!data.extIcons,
+    iconCache: data.iconCache || {}
   }
 }
 

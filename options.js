@@ -1,6 +1,6 @@
 import { getState, setState, mergeRules, isValidRuleSet, STORAGE_KEYS } from './rules-engine.js'
-import { iconHTML } from './icon-render.js'
-import { openIconPicker } from './icon-picker.js'
+import { iconHTML, loadIconCache, clearIconCache, getIconCache } from './icon-render.js'
+import { openIconPicker, configureExtIcons } from './icon-picker.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -9,7 +9,24 @@ const DEFAULT_REMOTE_URL = 'https://raw.githubusercontent.com/etng/ForkURL/main/
 let workingCustomGroups = [] // editable copy until "Save"
 
 async function init () {
+  await loadIconCache()
   const state = await getState()
+
+  // Extended icons toggle
+  configureExtIcons(state.extIcons)
+  $('ext-icons-toggle').checked = !!state.extIcons
+  $('ext-icons-toggle').addEventListener('change', async (e) => {
+    await setState({ [STORAGE_KEYS.extIcons]: e.target.checked })
+    configureExtIcons(e.target.checked)
+  })
+  updateIconCacheMeta()
+  $('clear-icon-cache').addEventListener('click', async () => {
+    if (!confirm('清空所有已缓存的在线图标？这不会影响内置图标。')) return
+    await clearIconCache()
+    updateIconCacheMeta()
+    renderRuleTree()
+    renderCustomEditor()
+  })
 
   $('remote-url').value = state.remoteUrl || ''
   renderRemoteStatus(state)
@@ -460,6 +477,15 @@ function setStatus (id, text, kind) {
 
 function deepClone (obj) {
   return JSON.parse(JSON.stringify(obj))
+}
+
+function updateIconCacheMeta () {
+  const cache = getIconCache()
+  const n = Object.keys(cache).length
+  const bytes = JSON.stringify(cache).length
+  $('icon-cache-meta').textContent = n
+    ? `已缓存 ${n} 个在线图标（约 ${(bytes/1024).toFixed(1)} KB）`
+    : ''
 }
 
 function stamp () {

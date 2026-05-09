@@ -1,0 +1,82 @@
+name: 📝 提交规则
+description: 为 ForkURL 提交一条新规则（添加到现有组或新建组）。审核通过后将自动合并到 rules.json。
+title: "[规则] "
+labels: ["rule-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢贡献规则！请填写下面所有必填字段。
+        - URL 模板里 `{1}`、`{2}` 引用 `patterns` 中正则的捕获组
+        - 图标可以填 `simple:github` / `lucide:globe` / 任意 emoji
+        - 提交后机器人会自动校验并回复结果，仓库维护者评论 `/approve` 后会自动写入 rules.json
+
+  - type: input
+    id: group_id
+    attributes:
+      label: 目标组 ID
+      description: 现有组 (`github` / `npm` / `gitlab`) 或新组 ID（小写、`-` 分隔）
+      placeholder: github
+    validations:
+      required: true
+
+  - type: input
+    id: group_name
+    attributes:
+      label: 目标组显示名（新建组时必填）
+      description: 仅当 group_id 是新组时填写
+      placeholder: GitHub
+
+  - type: input
+    id: rule_id
+    attributes:
+      label: 规则 ID
+      description: 在该组内唯一，小写 + `-` 分隔
+      placeholder: github-actions
+    validations:
+      required: true
+
+  - type: input
+    id: rule_name
+    attributes:
+      label: 规则显示名
+      placeholder: GitHub Actions 页面
+    validations:
+      required: true
+
+  - type: textarea
+    id: patterns
+    attributes:
+      label: 匹配正则（一行一个）
+      description: 命中任一即匹配。注意转义反斜杠（`\\.` 而非 `\.`）。
+      placeholder: |
+        ^https://github\.com/([^/]+)/([^/]+)/actions.*
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: links
+    attributes:
+      label: 链接列表（JSON 数组）
+      description: |
+        每个元素需含 `id` `label` `icon` `url`，可选 `desc`。`{1}` `{2}` 引用上面的捕获组。
+      placeholder: |
+        [
+          {
+            "id": "actions",
+            "label": "Actions",
+            "icon": "lucide:zap",
+            "url": "https://github.com/{1}/{2}/actions",
+            "desc": "查看 GitHub Actions 工作流"
+          }
+        ]
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 补充说明（可选）
+      description: 这条规则的用途、典型场景、参考资料

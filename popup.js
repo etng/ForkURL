@@ -1,5 +1,5 @@
 import { getState, mergeRules, findLinks } from './rules-engine.js'
-import { iconHTML } from './icon-render.js'
+import { iconHTML, loadIconCache } from './icon-render.js'
 
 document.getElementById('open-options').addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
@@ -7,6 +7,7 @@ document.getElementById('open-options').addEventListener('click', () => {
 
 async function render () {
   const content = document.getElementById('content')
+  await loadIconCache()
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   const url = tab && tab.url
   if (!url) {

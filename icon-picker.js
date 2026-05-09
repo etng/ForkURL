@@ -1,17 +1,27 @@
 import { ICON_LIBRARY } from './icon-library.js'
-import { iconHTML, EMOJI_PRESETS } from './icon-render.js'
+import { iconHTML, EMOJI_PRESETS, fetchAndCacheIcon, searchIconify, getIconCache } from './icon-render.js'
 
 let modal = null
 let onPick = null
 let activeTab = 'library'
+let extEnabled = false
+let searchTimer = null
+
+export function configureExtIcons (enabled) {
+  extEnabled = !!enabled
+  if (modal) {
+    const onlineTab = modal.querySelector('[data-tab="online"]')
+    if (onlineTab) onlineTab.style.display = extEnabled ? '' : 'none'
+  }
+}
 
 export function openIconPicker (currentValue, callback) {
   onPick = callback
   ensureModal()
   modal.classList.add('open')
   modal.querySelector('.ip-search').value = ''
-  setTab(activeTab)
-  highlightCurrent(currentValue)
+  setTab(activeTab === 'online' && !extEnabled ? 'library' : activeTab)
+  modal.querySelector('.ip-custom-input').value = currentValue || ''
   setTimeout(() => modal.querySelector('.ip-search').focus(), 0)
 }
 
@@ -32,11 +42,12 @@ function ensureModal () {
         <button class="ip-close" aria-label="关闭">×</button>
       </div>
       <div class="ip-tabs">
-        <button data-tab="library" class="ip-tab">图标库</button>
+        <button data-tab="library" class="ip-tab">内置 (${Object.keys(ICON_LIBRARY).length})</button>
+        <button data-tab="online" class="ip-tab" style="display:none">在线搜索 (Iconify)</button>
         <button data-tab="emoji" class="ip-tab">Emoji</button>
         <button data-tab="custom" class="ip-tab">自定义文本</button>
       </div>
-      <input type="text" class="ip-search" placeholder="搜索（如 github、cloud、shield）">
+      <input type="text" class="ip-search" placeholder="搜索（如 github、database、cloud、shield）">
       <div class="ip-grid"></div>
       <div class="ip-custom" style="display:none">
         <p style="font-size:12px;color:#57606a;margin-bottom:6px">输入任意 emoji 或文本作为图标。</p>
@@ -47,7 +58,7 @@ function ensureModal () {
       </div>
       <div class="ip-foot">
         <span class="ip-meta"></span>
-        <span class="ip-credit">图标来自 <a href="https://simpleicons.org" target="_blank">Simple Icons</a> · <a href="https://lucide.dev" target="_blank">Lucide</a></span>
+        <span class="ip-credit">图标来自 <a href="https://simpleicons.org" target="_blank">Simple Icons</a> · <a href="https://lucide.dev" target="_blank">Lucide</a> · <a href="https://iconify.design" target="_blank">Iconify</a></span>
       </div>
     </div>
   `
@@ -55,7 +66,15 @@ function ensureModal () {
   modal.querySelector('.ip-backdrop').addEventListener('click', close)
   modal.querySelector('.ip-close').addEventListener('click', close)
   modal.querySelectorAll('.ip-tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)))
-  modal.querySelector('.ip-search').addEventListener('input', () => renderGrid(modal.querySelector('.ip-search').value))
+  modal.querySelector('.ip-search').addEventListener('input', () => {
+    const q = modal.querySelector('.ip-search').value
+    if (activeTab === 'online') {
+      clearTimeout(searchTimer)
+      searchTimer = setTimeout(() => renderOnlineGrid(q), 300)
+    } else {
+      renderGrid(q)
+    }
+  })
   modal.querySelector('.ip-custom-ok').addEventListener('click', () => {
     const v = modal.querySelector('.ip-custom-input').value.trim()
     if (v) pick(v)
@@ -69,6 +88,7 @@ function ensureModal () {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && modal.classList.contains('open')) close()
   })
+  if (extEnabled) modal.querySelector('[data-tab="online"]').style.display = ''
 }
 
 function setTab (tab) {
@@ -85,7 +105,13 @@ function setTab (tab) {
     grid.style.display = ''
     custom.style.display = 'none'
     search.style.display = ''
-    renderGrid(search.value)
+    if (tab === 'online') {
+      search.placeholder = '在 200,000+ 图标中搜索（至少 2 个字符）…'
+      renderOnlineGrid(search.value)
+    } else {
+      search.placeholder = '搜索（如 github、database、cloud、shield）'
+      renderGrid(search.value)
+    }
   }
 }
 
@@ -96,11 +122,17 @@ function renderGrid (filter) {
   filter = (filter || '').trim().toLowerCase()
   const items = []
   if (activeTab === 'library') {
-    for (const [key, def] of Object.entries(ICON_LIBRARY)) {
-      if (filter && !key.toLowerCase().includes(filter) && !def.label.toLowerCase().includes(filter)) continue
-      items.push({ key, label: def.label, html: def.svg })
+    // bundled library + already-cached online icons
+    const cache = getIconCache()
+    const all = { ...ICON_LIBRARY }
+    for (const [k, svg] of Object.entries(cache)) {
+      if (!all[k]) all[k] = { label: k.split(':')[1] || k, category: 'cached', svg }
     }
-  } else {
+    for (const [key, def] of Object.entries(all)) {
+      if (filter && !key.toLowerCase().includes(filter) && !def.label.toLowerCase().includes(filter)) continue
+      items.push({ key, label: def.label, html: def.svg, category: def.category })
+    }
+  } else if (activeTab === 'emoji') {
     for (const e of EMOJI_PRESETS) {
       if (filter && !e.includes(filter)) continue
       items.push({ key: e, label: e, html: e })
@@ -109,7 +141,7 @@ function renderGrid (filter) {
   for (const it of items) {
     const cell = document.createElement('button')
     cell.className = 'ip-cell'
-    cell.title = it.label
+    cell.title = it.key
     cell.innerHTML = `<span class="ip-cell-icon">${it.html}</span><span class="ip-cell-label">${escapeHtml(it.label)}</span>`
     cell.addEventListener('click', () => pick(it.key))
     grid.appendChild(cell)
@@ -117,8 +149,50 @@ function renderGrid (filter) {
   meta.textContent = `${items.length} 个图标` + (filter ? `（搜索 "${filter}"）` : '')
 }
 
-function highlightCurrent (value) {
-  modal.querySelector('.ip-custom-input').value = value || ''
+async function renderOnlineGrid (filter) {
+  const grid = modal.querySelector('.ip-grid')
+  const meta = modal.querySelector('.ip-meta')
+  filter = (filter || '').trim()
+  if (filter.length < 2) {
+    grid.innerHTML = ''
+    meta.textContent = '请输入至少 2 个字符开始在线搜索'
+    return
+  }
+  meta.textContent = `搜索 "${filter}" …`
+  grid.innerHTML = ''
+  let results
+  try {
+    results = await searchIconify(filter)
+  } catch (err) {
+    meta.textContent = '搜索失败：' + (err.message || err)
+    return
+  }
+  if (!results.length) {
+    meta.textContent = `没有找到 "${filter}"`
+    return
+  }
+  for (const r of results) {
+    const cell = document.createElement('button')
+    cell.className = 'ip-cell'
+    cell.title = r.key
+    // use Iconify CDN as preview img — img-src is allowed by default CSP
+    const previewUrl = `https://api.iconify.design/${r.collection}/${r.label}.svg`
+    cell.innerHTML = `<span class="ip-cell-icon"><img src="${previewUrl}" alt="" style="width:22px;height:22px"></span><span class="ip-cell-label">${escapeHtml(r.label)}</span>`
+    cell.addEventListener('click', async () => {
+      cell.disabled = true
+      cell.style.opacity = '0.5'
+      try {
+        await fetchAndCacheIcon(r.key)
+        pick(r.key)
+      } catch (err) {
+        meta.textContent = '下载图标失败：' + (err.message || err)
+        cell.disabled = false
+        cell.style.opacity = ''
+      }
+    })
+    grid.appendChild(cell)
+  }
+  meta.textContent = `${results.length} 个结果（点击下载并使用，会缓存到本地）`
 }
 
 function pick (value) {
