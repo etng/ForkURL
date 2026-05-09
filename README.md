@@ -15,10 +15,18 @@
 
 ## 安装
 
-1. clone 本仓库
+**方式一：下载发布版**（推荐普通用户）
+
+1. 到 [Releases](https://github.com/etng/ForkURL/releases) 下载最新 `forkurl-vX.Y.Z.zip`，解压
 2. 打开 `chrome://extensions`，开启「开发者模式」
-3. 点击「加载已解压的扩展程序」，选择本仓库目录
-4. 建议把扩展 pin 到工具栏（点击拼图图标 → 图钉），这样它就在地址栏右边
+3. 点「加载已解压的扩展程序」，选择解压后的目录
+
+**方式二：从源码加载**（开发者）
+
+1. clone 本仓库
+2. 同样在 `chrome://extensions` 加载已解压的扩展程序，选仓库根目录
+
+建议把扩展 pin 到工具栏（点击拼图图标 → 图钉），这样它就在地址栏右边。
 
 ## 使用默认远程规则源
 
@@ -114,6 +122,32 @@ bash scripts/build-icon-library.sh
 ```
 
 会从上游下载 SVG、规范化（`1em` + `currentColor`）、生成 `icon-library.js`。
+
+## 版本与发布
+
+- 版本号定义在 `manifest.json` 的 `version` 字段，遵循语义化版本（MAJOR.MINOR.PATCH）
+  - **MAJOR**：破坏性变更（manifest schema、规则数据结构、设置项不兼容等）
+  - **MINOR**：新功能（新规则组、UI 组件、图标库等）
+  - **PATCH**：bug 修复、默认规则微调、文案调整等
+- `rules.json` 的更新（通过 Issue 审批合并）**不会**自动发版；它通过运行时远程同步推给所有启用了远程源的用户。但每次合并时 CI 会自动同步重新生成 `default-rules.js`，让快照保持最新
+
+### 发布流程
+
+```bash
+# 1. 在 main 上把 manifest.json 的 version 改成 2.1.0
+# 2. 提交并打 tag
+git commit -am "release 2.1.0"
+git tag v2.1.0
+git push && git push --tags
+# 3. CI 自动校验、打包、创建 GitHub Release 上传 zip
+```
+
+工作流定义见 [`.github/workflows/release.yml`](.github/workflows/release.yml)，本地预演：
+
+```bash
+bash scripts/build-extension.sh                   # 仅打包，输出到 dist/
+bash scripts/build-extension.sh --check-version v2.1.0  # 同时校验 manifest 版本
+```
 
 ## License
 
