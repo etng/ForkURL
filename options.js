@@ -1,4 +1,6 @@
 import { getState, setState, mergeRules, isValidRuleSet, STORAGE_KEYS } from './rules-engine.js'
+import { iconHTML } from './icon-render.js'
+import { openIconPicker } from './icon-picker.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -178,7 +180,8 @@ function renderRuleRow (group, rule, state) {
     })
     row.appendChild(lcb)
     const ico = document.createElement('span')
-    ico.textContent = link.icon || '↗'
+    ico.className = 'preview-icon'
+    ico.innerHTML = iconHTML(link.icon)
     row.appendChild(ico)
     const lab = document.createElement('span')
     lab.textContent = link.label
@@ -335,7 +338,20 @@ function buildRuleCard (group, rule, ri) {
 function buildLinkRow (rule, link, li) {
   const row = document.createElement('div')
   row.className = 'clink'
-  row.appendChild(makeInput('icon-input', link.icon || '', '🌐', (v) => { link.icon = v }))
+
+  const iconBtn = document.createElement('button')
+  iconBtn.type = 'button'
+  iconBtn.className = 'icon-btn'
+  iconBtn.title = '点击选择图标'
+  iconBtn.innerHTML = iconHTML(link.icon)
+  iconBtn.addEventListener('click', () => {
+    openIconPicker(link.icon, (value) => {
+      link.icon = value
+      iconBtn.innerHTML = iconHTML(value)
+    })
+  })
+  row.appendChild(iconBtn)
+
   row.appendChild(makeInput('', link.label, '显示名', (v) => { link.label = v }))
   row.appendChild(makeInput('url-input', link.url, 'https://.../{1}', (v) => { link.url = v }))
   row.appendChild(makeInput('', link.desc || '', '说明（可选）', (v) => { link.desc = v }))

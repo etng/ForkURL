@@ -1,4 +1,5 @@
 import { getState, mergeRules, findLinks } from './rules-engine.js'
+import { iconHTML } from './icon-render.js'
 
 document.getElementById('open-options').addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
@@ -45,7 +46,7 @@ async function render () {
       a.target = '_blank'
       a.rel = 'noopener noreferrer'
       a.title = link.desc || link.url
-      a.innerHTML = `<span class="icon">${escapeHtml(link.icon || '↗')}</span><span class="label">${escapeHtml(link.label)}</span>`
+      a.innerHTML = `<span class="icon">${iconHTML(link.icon)}</span><span class="label">${escapeHtml(link.label)}</span>`
       a.addEventListener('click', (e) => {
         e.preventDefault()
         chrome.tabs.create({ url: link.url })

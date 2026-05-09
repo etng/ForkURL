@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<title>URL Switcher · 设置</title>
+<title>ForkURL · 设置</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -156,6 +156,68 @@
   }
   .help code { background: #eaeef2; padding: 0 4px; border-radius: 3px; font-size: 11px; }
 
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 28px;
+    border: 1px solid #d0d7de; border-radius: 6px;
+    background: #fff; cursor: pointer; padding: 0;
+    font-size: 16px; line-height: 1;
+  }
+  .icon-btn:hover { border-color: #0969da; }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .preview-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; }
+  .preview-icon svg { width: 14px; height: 14px; }
+
+  /* Icon picker modal */
+  .ip-modal { position: fixed; inset: 0; display: none; z-index: 9999; }
+  .ip-modal.open { display: block; }
+  .ip-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.4); }
+  .ip-dialog {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: min(640px, 92vw); max-height: 80vh;
+    background: #fff; border-radius: 10px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .ip-head { display: flex; justify-content: space-between; align-items: center; }
+  .ip-close { border: none; background: transparent; font-size: 22px; cursor: pointer; color: #57606a; }
+  .ip-tabs { display: flex; gap: 4px; }
+  .ip-tab {
+    padding: 4px 10px; border: 1px solid #d0d7de; border-radius: 16px;
+    background: #f6f8fa; cursor: pointer; font-size: 12px;
+  }
+  .ip-tab.active { background: #0969da; color: white; border-color: #0969da; }
+  .ip-search {
+    padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 6px;
+    font-size: 13px; width: 100%;
+  }
+  .ip-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 6px; overflow-y: auto; flex: 1; padding: 4px; min-height: 200px;
+  }
+  .ip-cell {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px; border: 1px solid transparent; border-radius: 6px;
+    background: transparent; cursor: pointer; font-size: 10px; color: #57606a;
+  }
+  .ip-cell:hover { background: #f6f8fa; border-color: #d0d7de; color: #0969da; }
+  .ip-cell-icon {
+    font-size: 22px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .ip-cell-icon svg { width: 22px; height: 22px; }
+  .ip-cell-label {
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .ip-foot {
+    display: flex; justify-content: space-between; font-size: 11px; color: #57606a;
+    border-top: 1px solid #eaeef2; padding-top: 8px;
+  }
+  .ip-foot a { color: #0969da; text-decoration: none; }
+  .ip-custom-ok.primary {
+    background: #2da44e; border-color: #2da44e; color: white;
+  }
+
   @media (prefers-color-scheme: dark) {
     body { background: #0d1117; color: #c9d1d9; }
     .card, details.group, input, textarea, select, button { background: #161b22; border-color: #30363d; color: #c9d1d9; }
@@ -167,12 +229,22 @@
     .meta, .desc, .rule-pat, summary::before, .field > label, .empty-hint, .help { color: #8b949e; }
     .help code { background: #21262d; }
     button.subtle:hover { background: #21262d; color: #c9d1d9; }
+    .icon-btn { background: #161b22; border-color: #30363d; }
+    .icon-btn:hover { border-color: #58a6ff; }
+    .ip-dialog { background: #161b22; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+    .ip-tab { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+    .ip-tab.active { background: #1f6feb; border-color: #1f6feb; }
+    .ip-search { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
+    .ip-cell { color: #8b949e; }
+    .ip-cell:hover { background: #21262d; border-color: #30363d; color: #58a6ff; }
+    .ip-foot { border-top-color: #30363d; color: #8b949e; }
+    .ip-foot a { color: #58a6ff; }
   }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>⇄ URL Switcher 设置</h1>
+  <h1>🔱 ForkURL 设置</h1>
   <p class="sub">配置远程规则源、启用/禁用规则、可视化编辑自定义规则。</p>
 
   <div class="card">

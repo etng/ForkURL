@@ -10,6 +10,7 @@
 - **远程规则源**：从 GitHub raw 等公开 URL 同步规则 JSON，每 6 小时自动刷新
 - **三层启停**：组 / 规则 / 单链接 任意粒度勾选启用或禁用
 - **可视化自定义编辑器**：表单式添加自己的组、规则、链接，无需手写 JSON
+- **可视化图标选择器**：内置 30 个图标（Simple Icons + Lucide），点按钮即可挑选 / 搜索 / 自定义 emoji
 - **导入 / 导出**：把自己的配置保存成文件，迁移或备份
 
 ## 安装
@@ -68,6 +69,16 @@ https://raw.githubusercontent.com/etng/ForkURL/main/rules.json
 
 默认内置规则 → 远程规则（按 group.id 覆盖同名组）→ 自定义规则（追加）→ 用户禁用集合作最后过滤。
 
+## 图标值的三种形式
+
+`icon` 字段接受任意字符串，渲染时按优先级匹配：
+
+1. `simple:<slug>` —— [Simple Icons](https://simpleicons.org/)（CC0），如 `simple:github`、`simple:gitpod`
+2. `lucide:<slug>` —— [Lucide](https://lucide.dev/)（MIT），如 `lucide:globe`、`lucide:shield`
+3. 其他任何文本 —— 当作 emoji 或纯文本字面渲染（`🌐`、`↗`……）
+
+设置页里点链接前面的图标按钮会弹出可视化选择器，带搜索和分类。
+
 ## License
 
-MIT
+代码 MIT。打包的图标各自遵循其原始许可（Simple Icons CC0 / Lucide MIT）。
