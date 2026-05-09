@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>URL Switcher · 设置</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f6f8fa;
+    color: #24292f;
+    padding: 32px 16px 80px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  h1 { font-size: 20px; margin-bottom: 6px; }
+  .sub { color: #57606a; margin-bottom: 24px; font-size: 13px; }
+  .card {
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .actions { margin-left: auto; display: flex; gap: 6px; }
+  .row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  input[type=text], input[type=url], textarea, select {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+    color: #24292f;
+    min-width: 0;
+  }
+  textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; min-height: 56px; resize: vertical; }
+  button {
+    padding: 5px 12px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #24292f;
+    white-space: nowrap;
+  }
+  button:hover { background: #eef0f2; }
+  button.primary { background: #2da44e; border-color: #2da44e; color: white; }
+  button.primary:hover { background: #2c974b; }
+  button.subtle { background: transparent; border-color: transparent; color: #57606a; padding: 2px 6px; }
+  button.subtle:hover { background: #eef0f2; color: #24292f; }
+  button.danger { color: #cf222e; }
+  button.danger:hover { background: #ffebe9; }
+  .meta { font-size: 12px; color: #57606a; }
+  .meta.error { color: #cf222e; }
+  .meta.ok { color: #1a7f37; }
+
+  details.group {
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  details.group > summary {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  details.group > summary::-webkit-details-marker { display: none; }
+  details.group > summary::before {
+    content: '▸';
+    font-size: 10px;
+    color: #57606a;
+    transition: transform .15s ease;
+  }
+  details.group[open] > summary::before { transform: rotate(90deg); }
+  .group-body { padding: 6px 12px 12px 28px; border-top: 1px solid #eaeef2; }
+  .rule { padding: 8px 0; border-bottom: 1px dashed #eaeef2; }
+  .rule:last-child { border-bottom: none; }
+  .rule-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .rule-name { font-weight: 600; font-size: 13px; }
+  .rule-pat { font-family: ui-monospace, monospace; font-size: 11px; color: #57606a; }
+  .links { padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+  .link-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+  .link-row .desc { color: #57606a; font-size: 11px; }
+  label.cb { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+  .badge {
+    display: inline-block; padding: 1px 6px; border-radius: 10px;
+    background: #ddf4ff; color: #0969da; font-size: 11px;
+  }
+
+  /* Structured custom editor */
+  .cgroup {
+    border: 1px solid #d0d7de;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    background: #fafbfc;
+  }
+  .cgroup-head {
+    display: flex; gap: 6px; align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eaeef2;
+    background: #f6f8fa;
+    border-radius: 8px 8px 0 0;
+  }
+  .cgroup-head input { background: #fff; }
+  .cgroup-head .name-input { flex: 2; font-weight: 600; }
+  .cgroup-head .id-input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; }
+  .cgroup-body { padding: 8px 12px; }
+
+  .crule {
+    border: 1px solid #eaeef2;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  .crule-head { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .crule-head .name-input { flex: 2; font-weight: 600; }
+  .crule-head .id-input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; }
+
+  .field { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; }
+  .field > label { width: 88px; padding-top: 4px; font-size: 12px; color: #57606a; flex-shrink: 0; }
+
+  .clink {
+    display: grid;
+    grid-template-columns: 36px 110px 1fr 130px auto;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .clink input { padding: 4px 6px; font-size: 12px; }
+  .clink .icon-input { text-align: center; }
+  .clink .url-input { font-family: ui-monospace, monospace; }
+
+  .empty-hint {
+    padding: 16px;
+    text-align: center;
+    color: #57606a;
+    font-size: 12px;
+    border: 1px dashed #d0d7de;
+    border-radius: 6px;
+  }
+  .help {
+    font-size: 12px; color: #57606a; line-height: 1.6;
+    background: #f6f8fa; border: 1px solid #eaeef2; border-radius: 6px;
+    padding: 8px 10px; margin-bottom: 10px;
+  }
+  .help code { background: #eaeef2; padding: 0 4px; border-radius: 3px; font-size: 11px; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #c9d1d9; }
+    .card, details.group, input, textarea, select, button { background: #161b22; border-color: #30363d; color: #c9d1d9; }
+    button:hover { background: #21262d; }
+    .group-body, .rule, .crule, .cgroup-head { border-color: #21262d; }
+    .cgroup, .help { background: #0d1117; border-color: #30363d; }
+    .cgroup-head { background: #161b22; }
+    .crule { background: #161b22; }
+    .meta, .desc, .rule-pat, summary::before, .field > label, .empty-hint, .help { color: #8b949e; }
+    .help code { background: #21262d; }
+    button.subtle:hover { background: #21262d; color: #c9d1d9; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⇄ URL Switcher 设置</h1>
+  <p class="sub">配置远程规则源、启用/禁用规则、可视化编辑自定义规则。</p>
+
+  <div class="card">
+    <h2>远程规则源</h2>
+    <p class="meta" style="margin-bottom:8px">从公开 URL 同步规则 JSON。每 6 小时自动刷新；保存或修改后会立即生效。</p>
+    <div class="row">
+      <input id="remote-url" type="url" placeholder="https://raw.githubusercontent.com/<user>/ForkURL/main/rules.json">
+      <button id="use-default-source">使用官方源</button>
+      <button id="save-url">保存</button>
+      <button id="refresh-url" class="primary">立即更新</button>
+    </div>
+    <div class="row">
+      <span id="remote-status" class="meta">未配置</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>规则列表</h2>
+    <p class="meta" style="margin-bottom:10px">勾选启用 / 取消勾选禁用。可在组、规则、单个链接三层粒度上控制。</p>
+    <div id="rule-tree"></div>
+  </div>
+
+  <div class="card">
+    <h2>
+      自定义规则
+      <span class="actions">
+        <button id="add-group">+ 添加组</button>
+      </span>
+    </h2>
+    <div class="help">
+      使用可视化编辑器添加自己的规则组。URL 模板里 <code>{1}</code>、<code>{2}</code> 引用正则捕获组；正则一行一个，匹配任一即可。修改后点 <strong>保存</strong> 才会生效。
+    </div>
+    <div id="custom-editor"></div>
+    <div class="row" style="margin-top:8px">
+      <button id="save-custom" class="primary">保存自定义规则</button>
+      <button id="reset-custom">放弃修改</button>
+      <span id="custom-status" class="meta"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>导入 / 导出</h2>
+    <p class="meta" style="margin-bottom:8px">导出当前的自定义规则、远程地址和启停状态；导入时可选择合并或覆盖。</p>
+    <div class="row">
+      <button id="export-btn">📤 导出我的配置</button>
+      <button id="import-btn">📥 导入配置文件</button>
+      <input id="import-file" type="file" accept="application/json" style="display:none">
+      <span id="io-status" class="meta"></span>
+    </div>
+  </div>
+</div>
+<script type="module" src="options.js"></script>
+</body>
+</html>

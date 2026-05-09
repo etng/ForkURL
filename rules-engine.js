@@ -1,0 +1,144 @@
+// Shared rule engine: storage access, merging, matching, link expansion.
+
+import { DEFAULT_RULES } from './default-rules.js'
+
+const STORAGE_KEYS = {
+  remoteUrl: 'remoteUrl',
+  remoteRules: 'remoteRules',
+  remoteUpdatedAt: 'remoteUpdatedAt',
+  remoteError: 'remoteError',
+  customGroups: 'customGroups',
+  disabled: 'disabled'
+}
+
+export async function getState () {
+  const data = await chrome.storage.local.get([
+    STORAGE_KEYS.remoteUrl,
+    STORAGE_KEYS.remoteRules,
+    STORAGE_KEYS.remoteUpdatedAt,
+    STORAGE_KEYS.remoteError,
+    STORAGE_KEYS.customGroups,
+    STORAGE_KEYS.disabled
+  ])
+  return {
+    remoteUrl: data.remoteUrl || '',
+    remoteRules: data.remoteRules || null,
+    remoteUpdatedAt: data.remoteUpdatedAt || 0,
+    remoteError: data.remoteError || '',
+    customGroups: data.customGroups || [],
+    disabled: data.disabled || {}
+  }
+}
+
+export async function setState (patch) {
+  await chrome.storage.local.set(patch)
+}
+
+// Merge default + remote (remote groups by id replace defaults) + custom (appended).
+export function mergeRules (state) {
+  const remote = isValidRuleSet(state.remoteRules) ? state.remoteRules : null
+  const remoteById = new Map()
+  if (remote) {
+    for (const g of remote.groups) remoteById.set(g.id, g)
+  }
+  const merged = []
+  for (const g of DEFAULT_RULES.groups) {
+    merged.push(remoteById.has(g.id) ? remoteById.get(g.id) : g)
+    remoteById.delete(g.id)
+  }
+  // Remote-only groups (not present in defaults) come next.
+  if (remote) {
+    for (const g of remote.groups) {
+      if (remoteById.has(g.id)) merged.push(g)
+    }
+  }
+  // Custom groups last.
+  for (const g of state.customGroups || []) merged.push(g)
+  return { version: 1, groups: merged }
+}
+
+export function isValidRuleSet (obj) {
+  if (!obj || typeof obj !== 'object') return false
+  if (!Array.isArray(obj.groups)) return false
+  for (const g of obj.groups) {
+    if (!g || typeof g.id !== 'string' || typeof g.name !== 'string') return false
+    if (!Array.isArray(g.rules)) return false
+    for (const r of g.rules) {
+      if (!r || typeof r.id !== 'string') return false
+      if (!Array.isArray(r.patterns) || !Array.isArray(r.links)) return false
+      for (const p of r.patterns) if (typeof p !== 'string') return false
+      for (const l of r.links) {
+        if (!l || typeof l.url !== 'string' || typeof l.label !== 'string') return false
+      }
+    }
+  }
+  return true
+}
+
+// Returns array of { groupId, ruleId, link: {id,label,icon,url,desc} } for the URL.
+export function findLinks (url, ruleSet, disabled = {}) {
+  const out = []
+  for (const group of ruleSet.groups) {
+    if (disabled[group.id]) continue
+    for (const rule of group.rules) {
+      const ruleKey = `${group.id}/${rule.id}`
+      if (disabled[ruleKey]) continue
+      const captures = matchRule(url, rule)
+      if (!captures) continue
+      for (let i = 0; i < rule.links.length; i++) {
+        const link = rule.links[i]
+        const linkId = link.id || String(i)
+        const linkKey = `${ruleKey}/${linkId}`
+        if (disabled[linkKey]) continue
+        const expanded = expandTemplate(link.url, captures)
+        if (!expanded) continue
+        out.push({
+          groupId: group.id,
+          ruleId: rule.id,
+          link: { ...link, id: linkId, url: expanded }
+        })
+      }
+      // Stop at first matching rule per group? Original behavior matched first rule across all rules.
+      // We allow multiple matching rules so user can opt in to more, but typically only one rule matches.
+    }
+  }
+  return out
+}
+
+function matchRule (url, rule) {
+  for (const pattern of rule.patterns) {
+    let re
+    try { re = new RegExp(pattern) } catch { continue }
+    const m = url.match(re)
+    if (m) return m
+  }
+  return null
+}
+
+function expandTemplate (tpl, captures) {
+  let result = tpl
+  let ok = true
+  result = result.replace(/\{(\d+)\}/g, (_, n) => {
+    const v = captures[Number(n)]
+    if (v === undefined) { ok = false; return '' }
+    return v
+  })
+  return ok ? result : null
+}
+
+// Fetch remote rules JSON, validate, persist on success.
+export async function fetchRemoteRules (url) {
+  if (!url) throw new Error('未配置远程规则地址')
+  const res = await fetch(url, { cache: 'no-store' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json()
+  if (!isValidRuleSet(json)) throw new Error('远程规则格式不合法')
+  await setState({
+    [STORAGE_KEYS.remoteRules]: json,
+    [STORAGE_KEYS.remoteUpdatedAt]: Date.now(),
+    [STORAGE_KEYS.remoteError]: ''
+  })
+  return json
+}
+
+export { STORAGE_KEYS }
