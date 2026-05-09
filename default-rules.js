@@ -257,6 +257,28 @@ export const DEFAULT_RULES = {
           ]
         }
       ]
+    },
+    {
+      "id": "group-qnx2k",
+      "name": "特强三辫完",
+      "rules": [
+        {
+          "id": "rule-el9xp",
+          "name": "情报站",
+          "patterns": [
+            "http://([^/]+)/admin/\\?n=fc\\.fca\\.aws\\..*"
+          ],
+          "links": [
+            {
+              "id": "link-1",
+              "label": "查看数据库",
+              "icon": "lucide:database",
+              "url": "http://{1}/admin/?n=fc.fca.aws.fdb",
+              "desc": "DbFilter"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
