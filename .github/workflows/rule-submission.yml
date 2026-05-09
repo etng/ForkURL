@@ -12,13 +12,36 @@ permissions:
 
 jobs:
   # ─── Validate on issue open / edit ─────────────────────────────────────────
+  # Triggers if the issue carries the rule-submission label OR if the body
+  # contains the template's section headers (handles the case where labels
+  # were never applied — e.g. GitHub silently drops template labels that
+  # don't yet exist in the repo).
   validate:
     if: |
       github.event_name == 'issues' &&
-      contains(github.event.issue.labels.*.name, 'rule-submission')
+      (
+        contains(github.event.issue.labels.*.name, 'rule-submission') ||
+        contains(github.event.issue.body, '### 目标组 ID')
+      )
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Ensure rule-submission label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const has = context.payload.issue.labels.some(l => l.name === 'rule-submission');
+            if (!has) {
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  labels: ['rule-submission']
+                });
+              } catch (e) { core.warning('Could not add label: ' + e.message); }
+            }
 
       - name: Run validator
         id: validate
@@ -27,8 +50,10 @@ jobs:
         run: |
           set +e
           echo "$ISSUE_BODY" | node .github/scripts/apply-submission.mjs validate > /tmp/report.md
-          echo "exit=$?" >> $GITHUB_OUTPUT
+          rc=$?
           cat /tmp/report.md
+          echo "rc=$rc" >> $GITHUB_OUTPUT
+          exit 0
 
       - name: Comment on issue
         uses: actions/github-script@v7
@@ -48,8 +73,11 @@ jobs:
     if: |
       github.event_name == 'issue_comment' &&
       github.event.issue &&
-      contains(github.event.issue.labels.*.name, 'rule-submission') &&
-      startsWith(github.event.comment.body, '/approve')
+      startsWith(github.event.comment.body, '/approve') &&
+      (
+        contains(github.event.issue.labels.*.name, 'rule-submission') ||
+        contains(github.event.issue.body, '### 目标组 ID')
+      )
     runs-on: ubuntu-latest
     steps:
       - name: Check actor permission
@@ -97,12 +125,13 @@ jobs:
 
       - name: Commit & push
         if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
+        id: commit
         env:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
           if git diff --quiet rules.json; then
-            echo "No changes to rules.json"
+            echo "skipped=yes" >> $GITHUB_OUTPUT
           else
             git add rules.json
             git commit -m "rules: apply submission from #${ISSUE_NUMBER}
@@ -111,28 +140,44 @@ jobs:
 
           Approved by @${{ github.actor }}"
             git push origin HEAD:main
+            echo "skipped=no" >> $GITHUB_OUTPUT
+            echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           fi
 
       - name: Comment & close on success
         if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
         uses: actions/github-script@v7
+        env:
+          REPORT_PATH: /tmp/report.md
+          COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+          SKIPPED: ${{ steps.commit.outputs.skipped }}
         with:
           script: |
             const fs = require('fs');
-            const body = fs.readFileSync('/tmp/report.md', 'utf8');
+            const report = fs.readFileSync(process.env.REPORT_PATH, 'utf8');
+            const skipped = process.env.SKIPPED === 'yes';
+            const sha = process.env.COMMIT_SHA;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const num = context.issue.number;
+            const tail = skipped
+              ? `\n\n> ℹ️ \`rules.json\` 内容未变化（可能此规则已存在）。`
+              : `\n\n🎉 已写入 [\`rules.json\`](https://github.com/${owner}/${repo}/commit/${sha})，感谢贡献！所有用户在下次自动同步（最长 6 小时）后即可看到。`;
             await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body
+              owner, repo, issue_number: num,
+              body: report + tail
             });
             await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
+              owner, repo, issue_number: num,
               state: 'closed',
               state_reason: 'completed'
             });
+            try {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: num,
+                labels: ['merged']
+              });
+            } catch (e) { /* label may not exist; non-fatal */ }
 
       - name: Comment on failure
         if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc != '0'

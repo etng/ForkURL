@@ -42,8 +42,17 @@ const F = {
   links: '链接列表（一行一条，`|` 分隔）'
 }
 
+function stripCodeFence (s) {
+  // GitHub Issue Forms wraps `render: text` / `render: json` fields in fenced
+  // code blocks like ```text ... ``` or ```json ... ```. Peel them off.
+  return String(s)
+    .replace(/^```[a-zA-Z0-9_-]*\s*\n/, '')
+    .replace(/\n```\s*$/, '')
+    .trim()
+}
+
 function parseLinksField (raw) {
-  const stripped = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  const stripped = stripCodeFence(raw)
   if (!stripped) return { links: [], error: '链接列表为空' }
   // JSON form (back-compat)
   if (stripped.startsWith('[') || stripped.startsWith('{')) {
@@ -88,7 +97,7 @@ function buildSubmission (fields) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(ruleId)) errors.push('`rule_id` 必须是 kebab-case')
   if (!ruleName) errors.push('`rule_name` 不能为空')
 
-  const patterns = patternsRaw.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+  const patterns = stripCodeFence(patternsRaw).split(/\r?\n/).map(s => s.trim()).filter(Boolean)
   if (!patterns.length) errors.push('至少要有 1 条 pattern')
   for (const p of patterns) {
     try { new RegExp(p) } catch (e) { errors.push(`pattern 编译失败: \`${p}\` — ${e.message}`) }
