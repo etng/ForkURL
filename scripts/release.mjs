@@ -9,8 +9,9 @@ import fs from 'node:fs'
 import { execSync } from 'node:child_process'
 
 const bump = process.argv[2]
+const dryRun = process.argv.includes('--dry-run')
 if (!['patch', 'minor', 'major'].includes(bump)) {
-  console.error('Usage: node scripts/release.mjs <patch|minor|major>')
+  console.error('Usage: node scripts/release.mjs <patch|minor|major> [--dry-run]')
   process.exit(2)
 }
 
@@ -21,7 +22,14 @@ function sh (cmd, opts = {}) {
   try {
     return execSync(cmd, { stdio: opts.capture ? 'pipe' : 'inherit', encoding: 'utf8' }).toString().trim()
   } catch (e) {
-    if (opts.capture) throw e
+    if (opts.allowFail) throw e
+    console.error(`\n✗ Command failed (exit ${e.status}): ${cmd}`)
+    if (opts.capture) {
+      const out = (e.stdout || '').toString().trim()
+      const err = (e.stderr || '').toString().trim()
+      if (out) console.error('  stdout:\n' + out.split('\n').map(l => '    ' + l).join('\n'))
+      if (err) console.error('  stderr:\n' + err.split('\n').map(l => '    ' + l).join('\n'))
+    }
     process.exit(e.status || 1)
   }
 }
@@ -40,14 +48,9 @@ if (dirty) {
   process.exit(1)
 }
 
-console.log('→ Fetching latest from origin')
-sh('git fetch --quiet --tags origin')
-const localSha = sh('git rev-parse @', { capture: true })
-const remoteSha = sh('git rev-parse @{u}', { capture: true })
-if (localSha !== remoteSha) {
-  console.error('✗ Local main differs from origin/main. Run `git pull --rebase` first.')
-  process.exit(1)
-}
+console.log('→ Syncing with origin/main')
+sh('git fetch --tags origin')
+sh('git pull --rebase origin main')
 
 // ── Compute new version ──────────────────────────────────────────────────────
 const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'))
@@ -64,11 +67,15 @@ const next =
 const tag = `v${next}`
 
 // Tag must not already exist
+let tagExists = false
 try {
-  sh(`git rev-parse --verify --quiet refs/tags/${tag}`, { capture: true })
+  sh(`git rev-parse --verify --quiet refs/tags/${tag}`, { capture: true, allowFail: true })
+  tagExists = true
+} catch { /* not found — good */ }
+if (tagExists) {
   console.error(`✗ Tag ${tag} already exists.`)
   process.exit(1)
-} catch { /* not found — good */ }
+}
 
 console.log(`→ Bumping ${manifest.version} → ${next} (${bump})`)
 manifest.version = next
@@ -79,6 +86,14 @@ console.log(`→ Local build verification (${tag})`)
 sh(`bash scripts/build-extension.sh --check-version ${tag}`)
 
 // ── Commit + tag + push ──────────────────────────────────────────────────────
+if (dryRun) {
+  console.log(`\n[dry-run] would commit + tag ${tag} + push to origin`)
+  // Roll back manifest.json so the working tree is clean again
+  sh('git checkout -- manifest.json')
+  console.log('[dry-run] reverted manifest.json — no changes pushed')
+  process.exit(0)
+}
+
 sh('git add manifest.json')
 sh(`git commit -m "release ${tag}"`)
 sh(`git tag ${tag}`)
