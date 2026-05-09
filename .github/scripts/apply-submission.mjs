@@ -23,7 +23,7 @@ function parseIssueBody (body) {
   const out = {}
   const re = /^###\s+(.+?)\s*\n([\s\S]*?)(?=^###\s+)/gm
   let m
-  while ((m = re.exec(body + '\n###'))) {
+  while ((m = re.exec(body + '\n### __END__\n'))) {
     const key = m[1].trim()
     let val = m[2].trim()
     if (val === '_No response_' || val === '*No response*') val = ''
@@ -39,7 +39,40 @@ const F = {
   ruleId: '规则 ID',
   ruleName: '规则显示名',
   patterns: '匹配正则（一行一个）',
-  links: '链接列表（JSON 数组）'
+  links: '链接列表（一行一条，`|` 分隔）'
+}
+
+function parseLinksField (raw) {
+  const stripped = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  if (!stripped) return { links: [], error: '链接列表为空' }
+  // JSON form (back-compat)
+  if (stripped.startsWith('[') || stripped.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(stripped)
+      if (!Array.isArray(parsed)) return { links: [], error: 'JSON 必须是数组' }
+      return { links: parsed }
+    } catch (e) {
+      return { links: [], error: 'JSON 解析失败：' + e.message }
+    }
+  }
+  // Pipe-separated table form
+  const usedIds = new Set()
+  const out = []
+  const lines = stripped.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#'))
+  for (let i = 0; i < lines.length; i++) {
+    const parts = lines[i].split(/\s*\|\s*/)
+    if (parts.length < 3) {
+      return { links: [], error: `第 ${i + 1} 行字段不足（至少需要 \`label | icon | url\`）：\`${lines[i]}\`` }
+    }
+    const [label, icon, url, desc = ''] = parts
+    let id = (label || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    if (!id) id = `link-${i + 1}`
+    let unique = id, n = 2
+    while (usedIds.has(unique)) unique = `${id}-${n++}`
+    usedIds.add(unique)
+    out.push({ id: unique, label: label.trim(), icon: icon.trim(), url: url.trim(), desc: desc.trim() })
+  }
+  return { links: out }
 }
 
 function buildSubmission (fields) {
@@ -61,21 +94,14 @@ function buildSubmission (fields) {
     try { new RegExp(p) } catch (e) { errors.push(`pattern 编译失败: \`${p}\` — ${e.message}`) }
   }
 
-  let links = []
-  try {
-    const stripped = linksRaw.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim()
-    links = JSON.parse(stripped)
-  } catch (e) {
-    errors.push('`links` 不是合法 JSON: ' + e.message)
-  }
-  if (!Array.isArray(links)) errors.push('`links` 必须是 JSON 数组')
-  else if (!links.length) errors.push('至少要有 1 个 link')
-  else {
-    for (const [i, l] of links.entries()) {
-      if (!l || typeof l !== 'object') { errors.push(`link[${i}] 必须是对象`); continue }
-      for (const k of ['id', 'label', 'url']) if (!l[k] || typeof l[k] !== 'string') errors.push(`link[${i}].${k} 必须是非空字符串`)
-      if (!/^[a-z0-9][a-z0-9-]*$/.test(l.id || '')) errors.push(`link[${i}].id 必须是 kebab-case`)
-    }
+  const parsed = parseLinksField(linksRaw)
+  if (parsed.error) errors.push(parsed.error)
+  const links = parsed.links
+  if (!links.length && !parsed.error) errors.push('至少要有 1 个 link')
+  for (const [i, l] of links.entries()) {
+    if (!l || typeof l !== 'object') { errors.push(`link[${i}] 必须是对象`); continue }
+    for (const k of ['label', 'url']) if (!l[k] || typeof l[k] !== 'string') errors.push(`link[${i}].${k} 必须是非空字符串`)
+    if (l.id && !/^[a-z0-9][a-z0-9-]*$/.test(l.id)) errors.push(`link[${i}].id 必须是 kebab-case（留空自动生成）`)
   }
 
   return {

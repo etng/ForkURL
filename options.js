@@ -302,6 +302,21 @@ function buildRuleCard (group, rule, ri) {
   head.className = 'crule-head'
   head.appendChild(makeInput('name-input', rule.name, '规则名', (v) => { rule.name = v }))
   head.appendChild(makeInput('id-input', rule.id, '规则 id', (v) => { rule.id = v }))
+
+  const validateBtn = document.createElement('button')
+  validateBtn.className = 'subtle'
+  validateBtn.textContent = '🔍 验证'
+  validateBtn.title = '用一个示例 URL 测试此规则'
+  validateBtn.onclick = () => toggleValidator(card, rule)
+  head.appendChild(validateBtn)
+
+  const submitBtn = document.createElement('button')
+  submitBtn.className = 'subtle'
+  submitBtn.textContent = '📤 提交'
+  submitBtn.title = '在 GitHub 上提交此规则到官方源（会预填字段）'
+  submitBtn.onclick = () => openSubmissionUrl(group, rule)
+  head.appendChild(submitBtn)
+
   const del = document.createElement('button')
   del.className = 'subtle danger'
   del.textContent = '×'
@@ -382,6 +397,135 @@ function buildLinkRow (rule, link, li) {
   }
   row.appendChild(del)
   return row
+}
+
+// ─── Validate / Submit helpers (custom-rule editor) ────────────────────────
+
+function toggleValidator (card, rule) {
+  const existing = card.querySelector('.rule-validator')
+  if (existing) {
+    existing.remove()
+    return
+  }
+  const panel = document.createElement('div')
+  panel.className = 'rule-validator'
+  panel.innerHTML = `
+    <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+      <input type="url" class="vurl" placeholder="https://example.com/some/path 粘贴一个完整 URL 测试" style="flex:1">
+      <button class="vrun primary">测试</button>
+    </div>
+    <div class="vresult" style="margin-top:6px;font-size:12px"></div>
+  `
+  card.appendChild(panel)
+  const input = panel.querySelector('.vurl')
+  const result = panel.querySelector('.vresult')
+  const run = () => renderValidation(rule, input.value.trim(), result)
+  panel.querySelector('.vrun').addEventListener('click', run)
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') run() })
+  setTimeout(() => input.focus(), 0)
+}
+
+function renderValidation (rule, url, resultEl) {
+  resultEl.innerHTML = ''
+  if (!url) {
+    resultEl.innerHTML = '<span class="meta">请输入 URL</span>'
+    return
+  }
+
+  // Compile patterns
+  const compileErrors = []
+  const regexes = []
+  for (const p of rule.patterns || []) {
+    try { regexes.push({ src: p, re: new RegExp(p) }) }
+    catch (e) { compileErrors.push({ src: p, msg: e.message }) }
+  }
+  if (compileErrors.length) {
+    const ul = document.createElement('ul')
+    ul.style.cssText = 'margin:0;padding-left:18px;color:#cf222e'
+    for (const e of compileErrors) {
+      const li = document.createElement('li')
+      li.innerHTML = `pattern 编译失败：<code>${escapeHtml(e.src)}</code> — ${escapeHtml(e.msg)}`
+      ul.appendChild(li)
+    }
+    resultEl.appendChild(ul)
+    return
+  }
+
+  // Find first match
+  let captures = null, matchedPattern = null
+  for (const { src, re } of regexes) {
+    const m = url.match(re)
+    if (m) { captures = m; matchedPattern = src; break }
+  }
+  if (!captures) {
+    resultEl.innerHTML = `<span class="meta error">❌ URL 未匹配任何 pattern。</span>`
+    return
+  }
+
+  // Show match summary
+  const hdr = document.createElement('div')
+  hdr.innerHTML = `<span class="meta ok">✅ 匹配 pattern：</span><code style="font-size:11px">${escapeHtml(matchedPattern)}</code>`
+  resultEl.appendChild(hdr)
+
+  if (captures.length > 1) {
+    const caps = document.createElement('div')
+    caps.style.cssText = 'font-size:11px;color:#57606a;margin-top:2px'
+    caps.innerHTML = '捕获组：' + captures.slice(1).map((c, i) => `<code>{${i + 1}}</code> = <code>${escapeHtml(c)}</code>`).join(' · ')
+    resultEl.appendChild(caps)
+  }
+
+  // Render generated URLs
+  const list = document.createElement('div')
+  list.style.cssText = 'margin-top:6px;display:flex;flex-direction:column;gap:3px'
+  for (const link of rule.links || []) {
+    const expanded = expandTemplate(link.url, captures)
+    const row = document.createElement('div')
+    row.style.cssText = 'display:flex;gap:6px;align-items:center'
+    if (expanded == null) {
+      row.innerHTML = `<span class="meta error">⚠ ${escapeHtml(link.label)} 模板有未填充的占位符</span> <code style="font-size:11px">${escapeHtml(link.url)}</code>`
+    } else {
+      row.innerHTML = `<span class="preview-icon">${iconHTML(link.icon)}</span><strong style="font-size:12px">${escapeHtml(link.label)}</strong> → <a href="${escapeAttr(expanded)}" target="_blank" style="font-size:11px;font-family:ui-monospace,monospace">${escapeHtml(expanded)}</a>`
+    }
+    list.appendChild(row)
+  }
+  resultEl.appendChild(list)
+}
+
+function expandTemplate (tpl, captures) {
+  let ok = true
+  const out = String(tpl).replace(/\{(\d+)\}/g, (_, n) => {
+    const v = captures[Number(n)]
+    if (v === undefined) { ok = false; return '' }
+    return v
+  })
+  return ok ? out : null
+}
+
+function openSubmissionUrl (group, rule) {
+  const linksTable = (rule.links || []).map(l =>
+    [l.label || '', l.icon || '', l.url || '', l.desc || ''].join(' | ').replace(/\s*\|\s*$/, '')
+  ).join('\n')
+
+  const params = new URLSearchParams()
+  params.set('template', 'submit-rule.yml')
+  params.set('title', `[规则] ${group.name || group.id} / ${rule.name || rule.id}`)
+  params.set('group_id', group.id)
+  if (group.name) params.set('group_name', group.name)
+  params.set('rule_id', rule.id)
+  params.set('rule_name', rule.name || '')
+  params.set('patterns', (rule.patterns || []).join('\n'))
+  params.set('links', linksTable)
+
+  const url = `https://github.com/etng/ForkURL/issues/new?${params.toString()}`
+  chrome.tabs ? chrome.tabs.create({ url }) : window.open(url, '_blank')
+}
+
+function escapeAttr (s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+function escapeHtml (s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
 function makeInput (cls, value, placeholder, onChange) {

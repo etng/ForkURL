@@ -81,13 +81,27 @@ https://raw.githubusercontent.com/etng/ForkURL/main/rules.json
 
 ## 贡献规则
 
-不用 fork 仓库 / 写代码也能贡献新规则：
+不用 fork 仓库 / 写代码也能贡献新规则。**最简方式**：
 
-1. 打开 [新建 Issue → 提交规则](https://github.com/etng/ForkURL/issues/new?template=submit-rule.yml)
-2. 按表单填写：目标组、规则名、匹配正则、链接列表（JSON）
-3. 提交后机器人会自动校验，回复「✅ 校验通过」或具体错误
-4. 仓库维护者评论 `/approve` 后，GitHub Action 会自动写入 `rules.json`、关闭 Issue
-5. 全体用户最多 6 小时后自动收到更新
+1. 在扩展设置页 → 自定义规则里编好你的规则
+2. 点这条规则旁的「🔍 验证」按钮，输入示例 URL 验证生成的目标地址正确无误
+3. 点「📤 提交」按钮 —— 自动跳转到 GitHub Issue 表单，所有字段已预填
+4. 直接点 Submit 提交即可
+
+**提交后的流程**：
+
+- 机器人自动校验，回复「✅ 校验通过」或具体错误
+- 仓库维护者评论 `/approve` 后，GitHub Action 会自动写入 `rules.json`、关闭 Issue
+- 全体用户最多 6 小时后自动收到更新
+
+**链接列表格式**（一行一条，`|` 分隔）：
+
+```
+显示名 | 图标 | URL 模板 | 说明（可选）
+Pages | lucide:globe | https://{1}.github.io/{2} | GitHub Pages 站点
+```
+
+校验和合并逻辑见 [`.github/scripts/apply-submission.mjs`](.github/scripts/apply-submission.mjs)。
 
 校验和合并逻辑见 [`.github/scripts/apply-submission.mjs`](.github/scripts/apply-submission.mjs)。
 

@@ -6,10 +6,12 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢贡献规则！请填写下面所有必填字段。
+        感谢贡献规则！**最简单的方式**是在扩展设置页里用可视化编辑器编好，点规则旁的「📤 提交到官方源」按钮，下面所有字段会自动填好。
+
+        手动填写也 OK，注意：
         - URL 模板里 `{1}`、`{2}` 引用 `patterns` 中正则的捕获组
-        - 图标可以填 `simple:github` / `lucide:globe` / 任意 emoji
-        - 提交后机器人会自动校验并回复结果，仓库维护者评论 `/approve` 后会自动写入 rules.json
+        - 图标可填 `simple:github` / `lucide:globe` 或任意 emoji
+        - 提交后机器人会自动校验，仓库维护者评论 `/approve` 后自动写入 `rules.json`
 
   - type: input
     id: group_id
@@ -58,20 +60,16 @@ body:
   - type: textarea
     id: links
     attributes:
-      label: 链接列表（JSON 数组）
+      label: 链接列表（一行一条，`|` 分隔）
       description: |
-        每个元素需含 `id` `label` `icon` `url`，可选 `desc`。`{1}` `{2}` 引用上面的捕获组。
+        每行一个链接，字段顺序：`显示名 | 图标 | URL 模板 | 说明（可选）`。
+        URL 模板里 `{1}` `{2}` 引用上面的捕获组。
+        图标支持 `simple:xxx` / `lucide:xxx` / 任意 emoji。
+        （也兼容 JSON 数组格式。）
       placeholder: |
-        [
-          {
-            "id": "actions",
-            "label": "Actions",
-            "icon": "lucide:zap",
-            "url": "https://github.com/{1}/{2}/actions",
-            "desc": "查看 GitHub Actions 工作流"
-          }
-        ]
-      render: json
+        Actions | lucide:zap | https://github.com/{1}/{2}/actions | 查看 GitHub Actions 工作流
+        Workflows YAML | lucide:file-code | https://github.com/{1}/{2}/tree/main/.github/workflows |
+      render: text
     validations:
       required: true
 
