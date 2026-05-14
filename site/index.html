@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title data-i18n="home.title">ForkURL - 开源 URL 工具跳转扩展</title>
+		<meta
+			name="description"
+			content="ForkURL 是一个浏览器扩展，可在 GitHub、npm、GitLab 等页面把当前 URL 匹配为 Pages、Raw、IDE、CDN 等下一步工具入口。"
+			data-i18n-attr="content:home.metaDescription"
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
+		<link rel="icon" href="assets/favicon.png" />
+		<link rel="stylesheet" href="styles.css" />
+	</head>
+	<body>
+		<header class="site-header">
+			<a class="brand" href="index.html">
+				<img class="brand-mark" src="assets/favicon.png" alt="" />
+				<span>ForkURL</span>
+			</a>
+			<div class="header-actions">
+				<nav class="site-nav" aria-label="主导航" data-i18n-attr="aria-label:nav.primaryLabel">
+					<a href="#features" data-i18n="nav.features">功能</a>
+					<a href="#rules" data-i18n="nav.rules">默认规则</a>
+					<a href="#install" data-i18n="nav.install">安装</a>
+					<a href="https://github.com/etng/ForkURL/releases" data-i18n="nav.releases">版本</a>
+					<a href="https://github.com/etng/ForkURL">GitHub</a>
+				</nav>
+				<div class="language-switch" aria-label="语言" data-i18n-attr="aria-label:language.label">
+					<button type="button" data-lang-option="zh" aria-pressed="true">中</button>
+					<button type="button" data-lang-option="en" aria-pressed="false">EN</button>
+				</div>
+			</div>
+		</header>
+
+		<main>
+			<section class="hero">
+				<div class="hero-copy">
+					<p class="eyebrow" data-i18n="home.hero.eyebrow">URL 工具跳转扩展</p>
+					<h1 data-i18n="home.hero.title">把当前 URL 变成下一步工具入口。</h1>
+					<p class="hero-summary" data-i18n="home.hero.summary">
+						打开仓库、包页面或代码资源时，ForkURL 会在工具栏显示可用跳转数量。点开图标即可前往 Pages、Raw、github.dev、CDN、依赖分析等相关工具。
+					</p>
+					<div class="hero-actions">
+						<a class="primary-link" href="https://github.com/etng/ForkURL/releases" data-i18n="home.hero.download">下载 v2.0.1</a>
+						<a class="secondary-link" href="#install" data-i18n="home.hero.installOptions">查看安装方式</a>
+					</div>
+					<div class="release-note" aria-label="当前版本信息" data-i18n-attr="aria-label:home.hero.releaseLabel">
+						<span data-i18n="home.hero.current">当前版本：v2.0.1</span>
+						<span>Chrome MV3</span>
+						<span data-i18n="home.hero.remoteRules">支持远程规则</span>
+					</div>
+				</div>
+				<figure class="product-shot">
+					<img
+						src="assets/forkurl-popup.png"
+						alt="ForkURL 弹窗展示 GitHub 仓库页面可用的 Pages、在线 IDE、沙箱、CDN 和发布入口。"
+						data-i18n-attr="alt:home.product.alt"
+					/>
+					<figcaption data-i18n="home.product.caption">匹配当前页面后，工具栏弹窗只展示可用跳转。</figcaption>
+				</figure>
+			</section>
+
+			<section class="install-section" id="install">
+				<div class="section-heading">
+					<div>
+						<p class="eyebrow" data-i18n="home.install.eyebrow">安装</p>
+						<h2 data-i18n="home.install.title">先从 GitHub 发布包安装。</h2>
+					</div>
+					<p class="section-summary" data-i18n="home.install.summary">
+						当前公开版本通过 GitHub Releases 分发。Chrome 和 Edge 可加载解压后的扩展目录；商店入口准备好后会在这里更新。
+					</p>
+				</div>
+				<div class="install-grid" aria-label="安装渠道" data-i18n-attr="aria-label:home.install.gridLabel">
+					<a class="install-card available" href="https://github.com/etng/ForkURL/releases">
+						<span class="store-icon release">ZIP</span>
+						<strong data-i18n="home.install.release.title">GitHub 发布包</strong>
+						<span data-i18n="home.install.release.description">下载最新 zip 包</span>
+						<em data-i18n="home.badges.available">可用</em>
+					</a>
+					<a class="install-card planned" href="https://chromewebstore.google.com/" aria-disabled="true">
+						<span class="store-icon chrome">C</span>
+						<strong data-i18n="home.install.chrome.title">Chrome 应用商店</strong>
+						<span data-i18n="home.install.chrome.description">Chrome 官方商店</span>
+						<em data-i18n="home.badges.planned">规划中</em>
+					</a>
+					<a class="install-card planned" href="https://microsoftedge.microsoft.com/addons/" aria-disabled="true">
+						<span class="store-icon edge">E</span>
+						<strong data-i18n="home.install.edge.title">Edge 加载项</strong>
+						<span data-i18n="home.install.edge.description">Microsoft Edge 商店</span>
+						<em data-i18n="home.badges.planned">规划中</em>
+					</a>
+					<a class="install-card planned" href="https://addons.mozilla.org/" aria-disabled="true">
+						<span class="store-icon firefox">F</span>
+						<strong data-i18n="home.install.firefox.title">Firefox 扩展</strong>
+						<span data-i18n="home.install.firefox.description">Firefox 版本评估中</span>
+						<em data-i18n="home.badges.planned">规划中</em>
+					</a>
+					<a class="install-card" href="https://github.com/etng/ForkURL">
+						<span class="store-icon source">GH</span>
+						<strong data-i18n="home.install.source.title">源代码</strong>
+						<span data-i18n="home.install.source.description">查看源码和问题反馈</span>
+						<em data-i18n="home.badges.open">打开</em>
+					</a>
+				</div>
+			</section>
+
+			<section class="feature-section" id="features">
+				<div class="section-heading compact">
+					<div>
+						<p class="eyebrow" data-i18n="home.features.eyebrow">功能</p>
+						<h2 data-i18n="home.features.title">围绕 URL 匹配、跳转和规则维护设计。</h2>
+					</div>
+				</div>
+				<div class="feature-grid">
+					<article class="feature-card">
+						<span>01</span>
+						<h3 data-i18n="home.features.badge.title">工具栏徽标</h3>
+						<p data-i18n="home.features.badge.description">匹配页面时显示可用跳转数量。不向页面注入浮层，页面 DOM 保持干净。</p>
+					</article>
+					<article class="feature-card">
+						<span>02</span>
+						<h3 data-i18n="home.features.rules.title">远程规则源</h3>
+						<p data-i18n="home.features.rules.description">默认规则可随版本打包，也可从公开 JSON 地址定时同步，适合快速补充新站点。</p>
+					</article>
+					<article class="feature-card">
+						<span>03</span>
+						<h3 data-i18n="home.features.editor.title">可视化编辑器</h3>
+						<p data-i18n="home.features.editor.description">自定义组、规则和链接都能在设置页维护，并可用示例 URL 验证生成结果。</p>
+					</article>
+					<article class="feature-card">
+						<span>04</span>
+						<h3 data-i18n="home.features.icons.title">图标选择器</h3>
+						<p data-i18n="home.features.icons.description">内置 Simple Icons 与 Lucide 图标，也可选择启用 Iconify 在线搜索并缓存到本地。</p>
+					</article>
+				</div>
+			</section>
+
+<!-- DEFAULT_RULES_SECTION_START -->
+			<section class="rules-section" id="rules">
+				<div class="rules-intro">
+					<p class="eyebrow" data-i18n="rules.eyebrow">默认规则</p>
+					<h2 data-i18n="rules.heading">ForkURL 已内置这些跳转目标。</h2>
+					<p data-i18n="rules.intro">
+						打开匹配页面时，ForkURL 会只展示当前页面可用的目标。下面是公开默认规则快照，帮助你快速判断哪些页面已经有现成入口。
+					</p>
+					<p class="rules-count" data-rules-lang="zh">当前公开默认规则包含 12 个规则组、20 条页面匹配规则、74 个跳转目标。</p>
+					<p class="rules-count" data-rules-lang="en">The public default snapshot includes 12 groups, 20 matching rules and 74 shortcut targets.</p>
+				</div>
+
+				<div class="rules-table-block" aria-labelledby="rules-table-title">
+					<div class="section-heading compact">
+						<div>
+							<p class="eyebrow" data-i18n="rules.table.eyebrow">目标表</p>
+							<h2 id="rules-table-title" data-i18n="rules.table.heading">按页面类型查看默认跳转。</h2>
+						</div>
+					</div>
+					<div class="language-panel" data-rules-lang="zh">
+						<div class="rules-table-wrap">
+							<table class="rules-table">
+								<thead>
+									<tr>
+										<th>规则组</th>
+										<th>匹配页面</th>
+										<th>默认跳转目标</th>
+										<th>数量</th>
+									</tr>
+								</thead>
+								<tbody>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub 仓库主页</td>
+									<td data-label="默认跳转目标">Pages, github.dev, github1s, vscode.dev, Gitpod, StackBlitz, CodeSandbox, pkg-size, jsDelivr GH, Releases</td>
+									<td data-label="数量">10</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub 文件 (blob)</td>
+									<td data-label="默认跳转目标">Raw, github1s, github.dev, RawGitHack, HTMLPreview</td>
+									<td data-label="数量">5</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub Pull Request</td>
+									<td data-label="默认跳转目标">github.dev, ReviewNB, Patch, Diff</td>
+									<td data-label="数量">4</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub Commit</td>
+									<td data-label="默认跳转目标">Patch, Diff</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub Release Tag</td>
+									<td data-label="默认跳转目标">Tag ZIP, Tag tar.gz</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitHub</td>
+									<td data-label="匹配页面">GitHub Gist</td>
+									<td data-label="默认跳转目标">Raw, Blocks</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">npm</td>
+									<td data-label="匹配页面">npm 包页面</td>
+									<td data-label="默认跳转目标">unpkg, jsDelivr, Bundlephobia, Packagephobia, pkg-size, npmgraph, RunKit, Socket, deps.dev, Registry JSON, unpkg meta, jsDelivr CDN, esm.sh, bundlejs, publint, npm trends, Snyk Advisor</td>
+									<td data-label="数量">17</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitLab</td>
+									<td data-label="匹配页面">GitLab 仓库</td>
+									<td data-label="默认跳转目标">Pages, Gitpod</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">GitLab</td>
+									<td data-label="匹配页面">GitLab 文件 (blob)</td>
+									<td data-label="默认跳转目标">Raw</td>
+									<td data-label="数量">1</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Bitbucket</td>
+									<td data-label="匹配页面">Bitbucket 仓库</td>
+									<td data-label="默认跳转目标">Source, Gitpod</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Bitbucket</td>
+									<td data-label="匹配页面">Bitbucket 文件</td>
+									<td data-label="默认跳转目标">Raw</td>
+									<td data-label="数量">1</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">PyPI</td>
+									<td data-label="匹配页面">PyPI 项目页</td>
+									<td data-label="默认跳转目标">JSON API, deps.dev, Libraries.io, Snyk Advisor, piwheels</td>
+									<td data-label="数量">5</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Rust crates</td>
+									<td data-label="匹配页面">crates.io 包页面</td>
+									<td data-label="默认跳转目标">docs.rs, docs.rs JSON, deps.rs, deps.dev, crates API</td>
+									<td data-label="数量">5</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Go</td>
+									<td data-label="匹配页面">pkg.go.dev 模块页</td>
+									<td data-label="默认跳转目标">deps.dev, GoDocs, Proxy latest</td>
+									<td data-label="数量">3</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Maven</td>
+									<td data-label="匹配页面">Maven Central Artifact</td>
+									<td data-label="默认跳转目标">Central, deps.dev</td>
+									<td data-label="数量">2</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">RubyGems</td>
+									<td data-label="匹配页面">RubyGems 包页面</td>
+									<td data-label="默认跳转目标">deps.dev, Libraries.io, Gemdocs, BestGems</td>
+									<td data-label="数量">4</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Packagist</td>
+									<td data-label="匹配页面">Packagist 包页面</td>
+									<td data-label="默认跳转目标">Metadata JSON</td>
+									<td data-label="数量">1</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">VS Code Marketplace</td>
+									<td data-label="匹配页面">VS Code 扩展</td>
+									<td data-label="默认跳转目标">Open VSX</td>
+									<td data-label="数量">1</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Docker Hub</td>
+									<td data-label="匹配页面">Docker 官方镜像</td>
+									<td data-label="默认跳转目标">library repo, OCI Explorer, deps.dev</td>
+									<td data-label="数量">3</td>
+								</tr>
+								<tr>
+									<td data-label="规则组">Docker Hub</td>
+									<td data-label="匹配页面">Docker 命名空间镜像</td>
+									<td data-label="默认跳转目标">OCI Explorer, deps.dev</td>
+									<td data-label="数量">2</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+					<div class="language-panel" data-rules-lang="en">
+						<div class="rules-table-wrap">
+							<table class="rules-table">
+								<thead>
+									<tr>
+										<th>Group</th>
+										<th>Page type</th>
+										<th>Built-in targets</th>
+										<th>Count</th>
+									</tr>
+								</thead>
+								<tbody>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">Repository page</td>
+									<td data-label="Built-in targets">Pages, github.dev, github1s, vscode.dev, Gitpod, StackBlitz, CodeSandbox, pkg-size, jsDelivr GH, Releases</td>
+									<td data-label="Count">10</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">File page</td>
+									<td data-label="Built-in targets">Raw, github1s, github.dev, RawGitHack, HTMLPreview</td>
+									<td data-label="Count">5</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">Pull request</td>
+									<td data-label="Built-in targets">github.dev, ReviewNB, Patch, Diff</td>
+									<td data-label="Count">4</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">Commit page</td>
+									<td data-label="Built-in targets">Patch, Diff</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">Release tag</td>
+									<td data-label="Built-in targets">Tag ZIP, Tag tar.gz</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitHub</td>
+									<td data-label="Page type">Gist</td>
+									<td data-label="Built-in targets">Raw, Blocks</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">npm</td>
+									<td data-label="Page type">Package page</td>
+									<td data-label="Built-in targets">unpkg, jsDelivr, Bundlephobia, Packagephobia, pkg-size, npmgraph, RunKit, Socket, deps.dev, Registry JSON, unpkg meta, jsDelivr CDN, esm.sh, bundlejs, publint, npm trends, Snyk Advisor</td>
+									<td data-label="Count">17</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitLab</td>
+									<td data-label="Page type">Repository page</td>
+									<td data-label="Built-in targets">Pages, Gitpod</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">GitLab</td>
+									<td data-label="Page type">File page</td>
+									<td data-label="Built-in targets">Raw</td>
+									<td data-label="Count">1</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Bitbucket</td>
+									<td data-label="Page type">Repository page</td>
+									<td data-label="Built-in targets">Source, Gitpod</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Bitbucket</td>
+									<td data-label="Page type">File page</td>
+									<td data-label="Built-in targets">Raw</td>
+									<td data-label="Count">1</td>
+								</tr>
+								<tr>
+									<td data-label="Group">PyPI</td>
+									<td data-label="Page type">Project page</td>
+									<td data-label="Built-in targets">JSON API, deps.dev, Libraries.io, Snyk Advisor, piwheels</td>
+									<td data-label="Count">5</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Rust crates</td>
+									<td data-label="Page type">Crate page</td>
+									<td data-label="Built-in targets">docs.rs, docs.rs JSON, deps.rs, deps.dev, crates API</td>
+									<td data-label="Count">5</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Go</td>
+									<td data-label="Page type">Module page</td>
+									<td data-label="Built-in targets">deps.dev, GoDocs, Proxy latest</td>
+									<td data-label="Count">3</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Maven</td>
+									<td data-label="Page type">Artifact page</td>
+									<td data-label="Built-in targets">Central, deps.dev</td>
+									<td data-label="Count">2</td>
+								</tr>
+								<tr>
+									<td data-label="Group">RubyGems</td>
+									<td data-label="Page type">Gem page</td>
+									<td data-label="Built-in targets">deps.dev, Libraries.io, Gemdocs, BestGems</td>
+									<td data-label="Count">4</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Packagist</td>
+									<td data-label="Page type">Package page</td>
+									<td data-label="Built-in targets">Metadata JSON</td>
+									<td data-label="Count">1</td>
+								</tr>
+								<tr>
+									<td data-label="Group">VS Code Marketplace</td>
+									<td data-label="Page type">Extension listing</td>
+									<td data-label="Built-in targets">Open VSX</td>
+									<td data-label="Count">1</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Docker Hub</td>
+									<td data-label="Page type">Official image page</td>
+									<td data-label="Built-in targets">library repo, OCI Explorer, deps.dev</td>
+									<td data-label="Count">3</td>
+								</tr>
+								<tr>
+									<td data-label="Group">Docker Hub</td>
+									<td data-label="Page type">Namespace image page</td>
+									<td data-label="Built-in targets">OCI Explorer, deps.dev</td>
+									<td data-label="Count">2</td>
+								</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<div class="rules-custom-section">
+					<div class="rules-custom-copy">
+						<p class="eyebrow" data-i18n="rules.custom.eyebrow">自定义</p>
+						<h2 data-i18n="rules.custom.heading">默认规则之外，你可以继续扩展。</h2>
+						<p data-i18n="rules.custom.summary">
+							内置规则只是常用入口。你可以在扩展设置页新增自己的组、正则和跳转链接，也可以配置远程规则源，让团队共享同一份规则 JSON。
+						</p>
+					</div>
+					<ul class="rules-custom-list">
+						<li>
+							<strong data-i18n="rules.custom.local.title">本地自定义</strong>
+							<span data-i18n="rules.custom.local.description">用设置页的可视化编辑器添加规则，并用示例 URL 验证生成结果。</span>
+						</li>
+						<li>
+							<strong data-i18n="rules.custom.remote.title">远程规则源</strong>
+							<span data-i18n="rules.custom.remote.description">把规则 JSON 放在公开地址，ForkURL 可定时同步，适合团队维护。</span>
+						</li>
+						<li>
+							<strong data-i18n="rules.custom.submit.title">提交到官方源</strong>
+							<span data-i18n="rules.custom.submit.description">通过 GitHub Issue 表单提交规则，审核合并后会自动更新默认规则文档。</span>
+						</li>
+					</ul>
+				</div>
+			</section>
+<!-- DEFAULT_RULES_SECTION_END -->
+			<section class="workflow-section">
+				<div class="workflow-copy">
+					<div>
+						<p class="eyebrow" data-i18n="home.workflow.eyebrow">使用流程</p>
+						<h2 data-i18n="home.workflow.title">识别页面，展开候选项，再打开目标工具。</h2>
+					</div>
+					<p data-i18n="home.workflow.summary">
+						ForkURL 只把当前 URL 用于本地规则匹配。匿名遥测只统计安装、每日活跃和入口使用，不记录页面 URL、域名、跳转目标或自定义规则。
+					</p>
+				</div>
+				<ol class="workflow-list">
+					<li>
+						<strong data-i18n="home.workflow.match.title">匹配当前页</strong>
+						<span data-i18n="home.workflow.match.description">打开 GitHub 仓库、npm 包或 GitLab 项目等页面后，徽标显示可用跳转数量。</span>
+					</li>
+					<li>
+						<strong data-i18n="home.workflow.choose.title">选择跳转</strong>
+						<span data-i18n="home.workflow.choose.description">点开弹窗，只看到当前页面能用的工具入口。</span>
+					</li>
+					<li>
+						<strong data-i18n="home.workflow.tune.title">维护规则</strong>
+						<span data-i18n="home.workflow.tune.description">在设置页启停规则、配置远程源，或提交新规则到官方源。</span>
+					</li>
+				</ol>
+			</section>
+		</main>
+
+		<footer class="site-footer">
+			<div>
+				<strong>ForkURL</strong>
+				<span data-i18n="footer.tagline">开源 URL 工具跳转扩展。</span>
+			</div>
+			<nav aria-label="页脚" data-i18n-attr="aria-label:footer.label">
+				<a href="privacy.html" data-i18n="footer.privacy">隐私</a>
+				<a href="https://github.com/etng/ForkURL/issues/new/choose" data-i18n="footer.issues">问题反馈</a>
+				<a href="https://github.com/etng/ForkURL/releases" data-i18n="footer.releases">版本记录</a>
+			</nav>
+		</footer>
+		<script src="i18n.js"></script>
+	</body>
+</html>

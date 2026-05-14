@@ -10,7 +10,8 @@ const STORAGE_KEYS = {
   customGroups: 'customGroups',
   disabled: 'disabled',
   extIcons: 'extIcons',
-  iconCache: 'iconCache'
+  iconCache: 'iconCache',
+  telemetryEnabled: 'telemetryEnabled'
 }
 
 export async function getState () {
@@ -22,7 +23,8 @@ export async function getState () {
     STORAGE_KEYS.customGroups,
     STORAGE_KEYS.disabled,
     STORAGE_KEYS.extIcons,
-    STORAGE_KEYS.iconCache
+    STORAGE_KEYS.iconCache,
+    STORAGE_KEYS.telemetryEnabled
   ])
   return {
     remoteUrl: data.remoteUrl || '',
@@ -32,7 +34,8 @@ export async function getState () {
     customGroups: data.customGroups || [],
     disabled: data.disabled || {},
     extIcons: !!data.extIcons,
-    iconCache: data.iconCache || {}
+    iconCache: data.iconCache || {},
+    telemetryEnabled: data.telemetryEnabled !== false
   }
 }
 

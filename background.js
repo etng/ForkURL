@@ -2,10 +2,15 @@
 // and refresh remote rules periodically.
 
 import { getState, mergeRules, findLinks, fetchRemoteRules } from './rules-engine.js'
+import { clearTelemetryLocalState, trackTelemetryEvent } from './telemetry.js'
 
 const BADGE_BG = '#0969da'
 const REFRESH_ALARM = 'url-switcher-remote-refresh'
 const REFRESH_PERIOD_MIN = 60 * 6 // 6 hours
+
+function ignoreAsyncError (promise) {
+  promise.catch(() => {})
+}
 
 async function updateBadgeForTab (tabId, url) {
   if (!url || !/^https?:/i.test(url)) {
@@ -41,20 +46,32 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   } catch {}
 })
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: REFRESH_PERIOD_MIN })
-  refreshAllTabs()
+  if (details.reason === 'install' || details.reason === 'update') {
+    await trackTelemetryEvent(details.reason, {
+      force: true,
+      previousVersion: details.previousVersion
+    })
+  }
+  await trackTelemetryEvent('daily_active')
+  await refreshAllTabs()
 })
 
-chrome.runtime.onStartup.addListener(() => {
-  refreshAllTabs()
+chrome.runtime.onStartup.addListener(async () => {
+  await trackTelemetryEvent('daily_active')
+  await refreshAllTabs()
 })
 
 chrome.alarms?.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== REFRESH_ALARM) return
+  await trackTelemetryEvent('daily_active')
   const { remoteUrl } = await getState()
   if (remoteUrl) {
-    try { await fetchRemoteRules(remoteUrl) }
+    try {
+      await fetchRemoteRules(remoteUrl)
+      await trackTelemetryEvent('rules_refresh')
+    }
     catch (err) {
       await chrome.storage.local.set({ remoteError: String(err && err.message || err) })
     }
@@ -67,6 +84,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (changes.remoteRules || changes.customGroups || changes.disabled) {
     refreshAllTabs()
   }
+  if (changes.telemetryEnabled?.newValue === false) {
+    ignoreAsyncError(clearTelemetryLocalState())
+  }
 })
 
 // Allow popup/options to request a manual remote refresh.
@@ -76,6 +96,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       try {
         const { remoteUrl } = await getState()
         const rules = await fetchRemoteRules(remoteUrl)
+        await trackTelemetryEvent('rules_refresh')
         refreshAllTabs()
         sendResponse({ ok: true, count: rules.groups.length })
       } catch (err) {
@@ -83,6 +104,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await chrome.storage.local.set({ remoteError: message })
         sendResponse({ ok: false, error: message })
       }
+    })()
+    return true
+  }
+  if (msg && msg.type === 'track-telemetry') {
+    (async () => {
+      const ok = await trackTelemetryEvent(msg.eventName)
+      sendResponse({ ok })
     })()
     return true
   }

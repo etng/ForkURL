@@ -45,6 +45,7 @@ INCLUDES=(
   popup.js
   options.html
   options.js
+  telemetry.js
   rules-engine.js
   default-rules.js
   rules.json

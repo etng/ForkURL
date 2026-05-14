@@ -123,9 +123,11 @@ jobs:
           echo "rc=$rc" >> $GITHUB_OUTPUT
           exit 0
 
-      - name: Sync default-rules.js
+      - name: Sync generated rule artifacts
         if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
-        run: node scripts/sync-default-rules.mjs
+        run: |
+          node scripts/sync-default-rules.mjs
+          node scripts/sync-rule-docs.mjs
 
       - name: Commit & push
         if: steps.perm.outputs.ok == 'yes' && steps.apply.outputs.rc == '0'
@@ -134,10 +136,10 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          if git diff --quiet rules.json default-rules.js; then
+          if git diff --quiet rules.json default-rules.js README.md docs/default-rules.md site/index.html; then
             echo "skipped=yes" >> $GITHUB_OUTPUT
           else
-            git add rules.json default-rules.js
+            git add rules.json default-rules.js README.md docs/default-rules.md site/index.html
             git commit -m "rules: apply submission from #${ISSUE_NUMBER}
 
           ${ISSUE_TITLE}

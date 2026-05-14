@@ -12,6 +12,8 @@ async function init () {
   await loadIconCache()
   const state = await getState()
 
+  chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'options_open' })
+
   // Extended icons toggle
   configureExtIcons(state.extIcons)
   $('ext-icons-toggle').checked = !!state.extIcons
@@ -26,6 +28,14 @@ async function init () {
     updateIconCacheMeta()
     renderRuleTree()
     renderCustomEditor()
+  })
+
+  $('telemetry-toggle').checked = state.telemetryEnabled
+  renderTelemetryStatus(state.telemetryEnabled)
+  $('telemetry-toggle').addEventListener('change', async (e) => {
+    const enabled = e.target.checked
+    await setState({ [STORAGE_KEYS.telemetryEnabled]: enabled })
+    renderTelemetryStatus(enabled)
   })
 
   $('remote-url').value = state.remoteUrl || ''
@@ -116,6 +126,14 @@ function renderRemoteStatus (state) {
     el.textContent = '已保存地址，尚未同步'
     el.className = 'meta'
   }
+}
+
+function renderTelemetryStatus (enabled) {
+  const el = $('telemetry-status')
+  el.textContent = enabled
+    ? '已开启；每日限频发送。'
+    : '已关闭；本地遥测状态会被清理。'
+  el.className = 'meta' + (enabled ? '' : ' ok')
 }
 
 // ─── Rule tree (enable/disable) ────────────────────────────────────────────

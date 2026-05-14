@@ -187,6 +187,31 @@
   .cta-text strong { font-size: 13px; }
   .cta-text span { font-size: 11px; color: #57606a; }
 
+  .privacy-note {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    border: 1px solid #eaeef2;
+    border-radius: 8px;
+    background: #fafbfc;
+  }
+  .privacy-note strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 13px;
+  }
+  .privacy-note span {
+    display: block;
+    color: #57606a;
+    font-size: 12px;
+  }
+  .privacy-note a {
+    color: #0969da;
+    text-decoration: none;
+  }
+  .privacy-note a:hover { text-decoration: underline; }
+
   .icon-btn {
     display: inline-flex; align-items: center; justify-content: center;
     width: 32px; height: 28px;
@@ -273,6 +298,9 @@
     .cta { background: #0d1117; border-color: #30363d; color: #c9d1d9; }
     .cta:hover { border-color: #58a6ff; }
     .cta-text span { color: #8b949e; }
+    .privacy-note { background: #0d1117; border-color: #30363d; }
+    .privacy-note span { color: #8b949e; }
+    .privacy-note a { color: #58a6ff; }
   }
 </style>
 </head>
@@ -331,6 +359,22 @@
   </div>
 
   <div class="card">
+    <h2>匿名使用统计</h2>
+    <p class="meta" style="margin-bottom:8px">用于了解活跃安装量、版本分布和核心入口使用情况。不会发送当前页面 URL、域名、规则内容、跳转目标或自定义配置。</p>
+    <div class="row">
+      <label class="cb"><input type="checkbox" id="telemetry-toggle"> <span>发送匿名使用统计</span></label>
+      <span id="telemetry-status" class="meta"></span>
+    </div>
+    <div class="privacy-note">
+      <span aria-hidden="true">🔒</span>
+      <span>
+        <strong>可随时关闭</strong>
+        <span>关闭后会停止发送，并清理本地遥测 ID 与发送记录。完整说明见 <a href="https://forkurl.0o666.xyz/privacy.html" target="_blank" rel="noopener noreferrer">隐私说明</a>。</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>导入 / 导出</h2>
     <p class="meta" style="margin-bottom:8px">导出当前的自定义规则、远程地址和启停状态；导入时可选择合并或覆盖。</p>
     <div class="row">
@@ -352,6 +396,10 @@
       <a class="cta" href="https://github.com/etng/ForkURL/issues/new?template=submit-rule.yml" target="_blank">
         <span class="cta-icon">📝</span>
         <span class="cta-text"><strong>提交新规则</strong><span>通过 Issue 表单提交，自动合并到默认源</span></span>
+      </a>
+      <a class="cta" href="https://forkurl.0o666.xyz/" target="_blank">
+        <span class="cta-icon">⌁</span>
+        <span class="cta-text"><strong>ForkURL 官网</strong><span>安装入口、隐私说明和版本信息</span></span>
       </a>
       <a class="cta" href="https://github.com/etng/ForkURL" target="_blank" id="star-cta">
         <span class="cta-icon">⭐</span>

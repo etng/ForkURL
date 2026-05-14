@@ -5,6 +5,8 @@ document.getElementById('open-options').addEventListener('click', () => {
   chrome.runtime.openOptionsPage()
 })
 
+chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'popup_open' })
+
 async function render () {
   const content = document.getElementById('content')
   await loadIconCache()
@@ -50,6 +52,7 @@ async function render () {
       a.innerHTML = `<span class="icon">${iconHTML(link.icon)}</span><span class="label">${escapeHtml(link.label)}</span>`
       a.addEventListener('click', (e) => {
         e.preventDefault()
+        chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'jump_open' })
         chrome.tabs.create({ url: link.url })
         window.close()
       })
