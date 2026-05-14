@@ -57,7 +57,7 @@ git diff --check
 - `site/i18n.js` 语法通过。
 - `scripts/validate-site.mjs` 检查 `111` 个 i18n key，`zh` / `en` 都有定义。
 - `site/assets/forkurl-popup.png` 已生成，尺寸为 `1120 x 700`。
-- 扩展打包成功：`dist/forkurl-v2.0.1.zip`，`60K`，`17` 个文件。
+- 扩展打包成功：`dist/forkurl-v2.1.0.zip`，`60K`，`17` 个文件。
 - `git diff --check` 无输出。
 
 本地静态服务验证：
