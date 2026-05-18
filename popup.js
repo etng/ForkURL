@@ -1,8 +1,9 @@
 import { getState, mergeRules, findLinks } from './rules-engine.js'
 import { iconHTML, loadIconCache } from './icon-render.js'
 
-document.getElementById('open-options').addEventListener('click', () => {
-  chrome.runtime.openOptionsPage()
+document.getElementById('open-options').addEventListener('click', async (event) => {
+  event.preventDefault()
+  await openOptionsPageFromPopup()
 })
 
 chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'popup_open' })
@@ -65,6 +66,54 @@ async function render () {
 
 function escapeHtml (s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+async function openOptionsPageFromPopup () {
+  const optionsUrl = chrome.runtime.getURL('options.html')
+  try {
+    await openRuntimeOptionsPage()
+    window.close()
+    return
+  } catch (error) {
+    console.warn('Could not open options page via runtime API; opening direct tab instead.', error)
+  }
+
+  try {
+    await chrome.tabs.create({ url: optionsUrl })
+  } catch (error) {
+    console.error('Could not open options page in a new tab.', error)
+    window.open(optionsUrl, '_blank', 'noopener,noreferrer')
+  }
+  window.close()
+}
+
+function openRuntimeOptionsPage () {
+  return new Promise((resolve, reject) => {
+    if (!chrome.runtime.openOptionsPage) {
+      reject(new Error('chrome.runtime.openOptionsPage is unavailable'))
+      return
+    }
+
+    let settled = false
+    const settle = (fn, value) => {
+      if (settled) return
+      settled = true
+      fn(value)
+    }
+
+    try {
+      const maybePromise = chrome.runtime.openOptionsPage(() => {
+        const error = chrome.runtime.lastError
+        if (error) settle(reject, error)
+        else settle(resolve)
+      })
+      if (maybePromise && typeof maybePromise.then === 'function') {
+        maybePromise.then(() => settle(resolve), error => settle(reject, error))
+      }
+    } catch (error) {
+      settle(reject, error)
+    }
+  })
 }
 
 render()
