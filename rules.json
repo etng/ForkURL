@@ -775,22 +775,60 @@
       ]
     },
     {
-      "id": "group-qnx2k",
-      "name": "特强三辫完",
+      "id": "twitter",
+      "name": "SNS",
       "rules": [
         {
-          "id": "rule-el9xp",
-          "name": "情报站",
+          "id": "status",
+          "name": "status page",
           "patterns": [
-            "http://([^/]+)/admin/\\?n=fc\\.fca\\.aws\\..*"
+            "^https://x\\.com/([^/]+)/status/(\\d+)(?:$|\\?.*)"
           ],
           "links": [
             {
-              "id": "link-1",
-              "label": "查看数据库",
-              "icon": "lucide:database",
-              "url": "http://{1}/admin/?n=fc.fca.aws.fdb",
-              "desc": "DbFilter"
+              "id": "to-article",
+              "label": "To Article",
+              "icon": "lucide:share-2",
+              "url": "https://x.com/{1}/article/{2}",
+              "desc": ""
+            }
+          ]
+        },
+        {
+          "id": "article",
+          "name": "article page",
+          "patterns": [
+            "^https://x\\.com/([^/]+)/article/(\\d+)(?:$|\\?.*)"
+          ],
+          "links": [
+            {
+              "id": "to-status",
+              "label": "To Status",
+              "icon": "lucide:share-2",
+              "url": "https://x.com/{1}/status/{2}",
+              "desc": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "android",
+      "name": "Android",
+      "rules": [
+        {
+          "id": "google-play-apk",
+          "name": "GooglePlayApk",
+          "patterns": [
+            "^https://play\\.google\\.com/store/apps/details\\?id=([^&#]+).*"
+          ],
+          "links": [
+            {
+              "id": "apkpure",
+              "label": "ApkPure",
+              "icon": "lucide:package",
+              "url": "https://apkpure.com/cn/store/apps/details?id={1}",
+              "desc": "download in apk pure"
             }
           ]
         }

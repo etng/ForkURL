@@ -17,7 +17,7 @@
 
 <!-- DEFAULT_RULES_TABLE_START -->
 
-当前公开默认规则包含 **12** 个规则组、**20** 条页面匹配规则、**74** 个跳转目标。完整快照见 [docs/default-rules.md](docs/default-rules.md)，官网首页 `#rules` 段落也会展示同一张表。
+当前公开默认规则包含 **14** 个规则组、**23** 条页面匹配规则、**77** 个跳转目标。完整快照见 [docs/default-rules.md](docs/default-rules.md)，官网首页 `#rules` 段落也会展示同一张表。
 
 | 规则组 | 匹配页面 | 默认跳转目标 | 数量 |
 | --- | --- | --- | ---: |
@@ -41,6 +41,9 @@
 | VS Code Marketplace | VS Code 扩展 | Open VSX | 1 |
 | Docker Hub | Docker 官方镜像 | library repo, OCI Explorer, deps.dev | 3 |
 | Docker Hub | Docker 命名空间镜像 | OCI Explorer, deps.dev | 2 |
+| SNS | status page | To Article | 1 |
+| SNS | article page | To Status | 1 |
+| Android | GooglePlayApk | ApkPure | 1 |
 
 > 这张表由 `scripts/sync-rule-docs.mjs` 从 `rules.json` 生成。合并规则提交后，CI 会同步更新 README、官网首页规则段落和 `docs/default-rules.md`。
 

@@ -31,7 +31,9 @@ const groupNameEn = {
   rubygems: 'RubyGems',
   packagist: 'Packagist',
   vscode: 'VS Code Marketplace',
-  docker: 'Docker Hub'
+  docker: 'Docker Hub',
+  twitter: 'SNS',
+  android: 'Android'
 }
 
 const ruleNameEn = {
@@ -54,7 +56,10 @@ const ruleNameEn = {
   'packagist-package': 'Package page',
   'vscode-extension': 'Extension listing',
   'docker-official-image': 'Official image page',
-  'docker-namespace-image': 'Namespace image page'
+  'docker-namespace-image': 'Namespace image page',
+  status: 'Status page',
+  article: 'Article page',
+  'google-play-apk': 'Google Play app page'
 }
 
 const skipDocsGroup = (group) => {

@@ -38,6 +38,11 @@
     color: #24292f;
     min-width: 0;
   }
+  input:disabled {
+    color: #57606a;
+    background: #f6f8fa;
+    cursor: not-allowed;
+  }
   textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; min-height: 56px; resize: vertical; }
   button {
     padding: 5px 12px;
@@ -87,6 +92,7 @@
   .rule { padding: 8px 0; border-bottom: 1px dashed #eaeef2; }
   .rule:last-child { border-bottom: none; }
   .rule-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .rule-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .rule-name { font-weight: 600; font-size: 13px; }
   .rule-pat { font-family: ui-monospace, monospace; font-size: 11px; color: #57606a; }
   .links { padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
@@ -97,6 +103,19 @@
     display: inline-block; padding: 1px 6px; border-radius: 10px;
     background: #ddf4ff; color: #0969da; font-size: 11px;
   }
+  .source-badge {
+    display: inline-flex; align-items: center; flex-shrink: 0;
+    padding: 1px 7px; border-radius: 999px;
+    border: 1px solid #d0d7de;
+    background: #f6f8fa; color: #57606a;
+    font-size: 11px; font-weight: 500;
+  }
+  .source-badge.custom { border-color: #bf8700; background: #fff8c5; color: #7d4e00; }
+  .source-badge.modified { border-color: #2da44e; background: #dafbe1; color: #116329; }
+  .source-badge.draft { border-color: #0969da; background: #ddf4ff; color: #0969da; }
+  .group-title-editor { display: flex; gap: 6px; flex: 1; min-width: 0; }
+  .group-title-editor .name-input { flex: 2; font-weight: 600; }
+  .group-title-editor .id-input { flex: 1; font-family: ui-monospace, monospace; font-size: 12px; }
 
   /* Structured custom editor */
   .cgroup {
@@ -123,6 +142,10 @@
     padding: 8px 10px;
     margin-bottom: 8px;
     background: #fff;
+  }
+  .crule.focus-flash {
+    border-color: #2da44e;
+    box-shadow: 0 0 0 3px rgba(45,164,78,0.16);
   }
   .crule-head { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
   .rule-validator {
@@ -277,12 +300,17 @@
   @media (prefers-color-scheme: dark) {
     body { background: #0d1117; color: #c9d1d9; }
     .card, details.group, input, textarea, select, button { background: #161b22; border-color: #30363d; color: #c9d1d9; }
+    input:disabled { background: #0d1117; color: #8b949e; }
     button:hover { background: #21262d; }
     .group-body, .rule, .crule, .cgroup-head { border-color: #21262d; }
     .cgroup, .help { background: #0d1117; border-color: #30363d; }
     .cgroup-head { background: #161b22; }
     .crule { background: #161b22; }
     .meta, .desc, .rule-pat, summary::before, .field > label, .empty-hint, .help { color: #8b949e; }
+    .source-badge { background: #0d1117; border-color: #30363d; color: #8b949e; }
+    .source-badge.custom { background: #332600; border-color: #9a6700; color: #eac54f; }
+    .source-badge.modified { background: #082b16; border-color: #238636; color: #7ee787; }
+    .source-badge.draft { background: #0b2a45; border-color: #1f6feb; color: #79c0ff; }
     .help code { background: #21262d; }
     button.subtle:hover { background: #21262d; color: #c9d1d9; }
     .icon-btn { background: #161b22; border-color: #30363d; }
@@ -321,30 +349,31 @@
     <div class="row">
       <span id="remote-status" class="meta">未配置</span>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>规则列表</h2>
-    <p class="meta" style="margin-bottom:10px">勾选启用 / 取消勾选禁用。可在组、规则、单个链接三层粒度上控制。</p>
-    <div id="rule-tree"></div>
+    <div class="row">
+      <button id="clear-remote-cache" class="danger">清远程缓存</button>
+      <button id="disconnect-remote-source" class="danger">清远程源和缓存</button>
+    </div>
   </div>
 
   <div class="card">
     <h2>
-      自定义规则
+      规则管理
       <span class="actions">
         <button id="add-group">+ 添加组</button>
       </span>
     </h2>
     <div class="help">
-      使用可视化编辑器添加自己的规则组。URL 模板里 <code>{1}</code>、<code>{2}</code> 引用正则捕获组；正则一行一个，匹配任一即可。修改后点 <strong>保存</strong> 才会生效。
+      当前列表就是最终生效视图。可在任意组下新增规则；同 id 的自定义规则会覆盖内置或远程规则，完全相同时保存会自动去重。URL 模板里 <code>{1}</code>、<code>{2}</code> 引用正则捕获组；修改后点 <strong>保存</strong> 才会生效。
     </div>
-    <div id="custom-editor"></div>
-    <div class="row" style="margin-top:8px">
-      <button id="save-custom" class="primary">保存自定义规则</button>
+    <div class="row">
+      <select id="add-rule-group"></select>
+      <button id="add-rule-to-group">+ 添加规则到选中组</button>
+      <span style="flex:1"></span>
+      <button id="save-custom" class="primary">保存规则</button>
       <button id="reset-custom">放弃修改</button>
       <span id="custom-status" class="meta"></span>
     </div>
+    <div id="rule-tree"></div>
   </div>
 
   <div class="card">

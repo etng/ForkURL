@@ -1,4 +1,4 @@
-import { getState, setState, mergeRules, isValidRuleSet, STORAGE_KEYS } from './rules-engine.js'
+import { getState, setState, mergeRules, isValidRuleSet, rulesAreEqual, STORAGE_KEYS } from './rules-engine.js'
 import { iconHTML, loadIconCache, clearIconCache, getIconCache } from './icon-render.js'
 import { openIconPicker, configureExtIcons } from './icon-picker.js'
 
@@ -7,10 +7,12 @@ const $ = (id) => document.getElementById(id)
 const DEFAULT_REMOTE_URL = 'https://raw.githubusercontent.com/etng/ForkURL/main/rules.json'
 
 let workingCustomGroups = [] // editable copy until "Save"
+let baseRuleSet = { version: 1, groups: [] }
 
 async function init () {
   await loadIconCache()
   const state = await getState()
+  baseRuleSet = getBaseRuleSet(state)
 
   chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'options_open' })
 
@@ -27,7 +29,6 @@ async function init () {
     await clearIconCache()
     updateIconCacheMeta()
     renderRuleTree()
-    renderCustomEditor()
   })
 
   $('telemetry-toggle').checked = state.telemetryEnabled
@@ -58,17 +59,25 @@ async function init () {
     $('remote-status').className = 'meta'
     chrome.runtime.sendMessage({ type: 'refresh-remote' }, async (res) => {
       const s = await getState()
+      baseRuleSet = getBaseRuleSet(s)
       renderRemoteStatus(s)
       if (res && !res.ok) {
         $('remote-status').textContent = '同步失败：' + res.error
         $('remote-status').className = 'meta error'
       }
+      refreshCustomGroupPicker()
       renderRuleTree()
     })
   })
+  $('clear-remote-cache').addEventListener('click', clearRemoteCache)
+  $('disconnect-remote-source').addEventListener('click', disconnectRemoteSource)
 
   workingCustomGroups = deepClone(state.customGroups || [])
-  renderCustomEditor()
+  refreshCustomGroupPicker()
+
+  $('add-rule-to-group').addEventListener('click', () => {
+    addCustomRuleToGroup($('add-rule-group').value)
+  })
 
   $('add-group').addEventListener('click', () => {
     workingCustomGroups.push({
@@ -76,24 +85,30 @@ async function init () {
       name: '新规则组',
       rules: []
     })
-    renderCustomEditor()
+    refreshCustomGroupPicker()
+    renderRuleTree()
   })
 
   $('save-custom').addEventListener('click', async () => {
-    const wrapper = { groups: workingCustomGroups }
+    const nextCustomGroups = normalizeCustomGroupsForSave(workingCustomGroups)
+    const wrapper = { groups: nextCustomGroups }
     if (!isValidRuleSet(wrapper)) {
       setStatus('custom-status', '校验失败：请检查每个规则至少有 1 个 pattern 与 1 个 link，且 url/label 都填写', 'error')
       return
     }
-    await setState({ [STORAGE_KEYS.customGroups]: workingCustomGroups })
-    setStatus('custom-status', `已保存（${workingCustomGroups.length} 个组）`, 'ok')
+    await setState({ [STORAGE_KEYS.customGroups]: nextCustomGroups })
+    workingCustomGroups = deepClone(nextCustomGroups)
+    refreshCustomGroupPicker()
+    setStatus('custom-status', `已保存（${workingCustomGroups.length} 个自定义组）`, 'ok')
     renderRuleTree()
   })
 
   $('reset-custom').addEventListener('click', async () => {
     const s = await getState()
+    baseRuleSet = getBaseRuleSet(s)
     workingCustomGroups = deepClone(s.customGroups || [])
-    renderCustomEditor()
+    refreshCustomGroupPicker()
+    renderRuleTree()
     setStatus('custom-status', '已恢复到上次保存', '')
   })
 
@@ -136,11 +151,41 @@ function renderTelemetryStatus (enabled) {
   el.className = 'meta' + (enabled ? '' : ' ok')
 }
 
+async function clearRemoteCache () {
+  if (!confirm('清空远程规则缓存？本地自定义规则会保留，下次点击“立即更新”会重新同步远程源。')) return
+  await chrome.storage.local.remove([
+    STORAGE_KEYS.remoteRules,
+    STORAGE_KEYS.remoteUpdatedAt,
+    STORAGE_KEYS.remoteError
+  ])
+  const state = await getState()
+  baseRuleSet = getBaseRuleSet(state)
+  renderRemoteStatus(state)
+  refreshCustomGroupPicker()
+  renderRuleTree()
+}
+
+async function disconnectRemoteSource () {
+  if (!confirm('清空远程源地址和远程规则缓存？本地自定义规则会保留。')) return
+  await chrome.storage.local.remove([
+    STORAGE_KEYS.remoteUrl,
+    STORAGE_KEYS.remoteRules,
+    STORAGE_KEYS.remoteUpdatedAt,
+    STORAGE_KEYS.remoteError
+  ])
+  $('remote-url').value = ''
+  const state = await getState()
+  baseRuleSet = getBaseRuleSet(state)
+  renderRemoteStatus(state)
+  refreshCustomGroupPicker()
+  renderRuleTree()
+}
+
 // ─── Rule tree (enable/disable) ────────────────────────────────────────────
 
 async function renderRuleTree () {
   const state = await getState()
-  const ruleSet = mergeRules(state)
+  const ruleSet = mergeRules({ ...state, customGroups: workingCustomGroups })
   const tree = $('rule-tree')
   tree.innerHTML = ''
   for (const group of ruleSet.groups) {
@@ -149,6 +194,10 @@ async function renderRuleTree () {
 }
 
 function renderGroup (group, state) {
+  const baseGroup = findBaseGroup(group.id)
+  const workingGroup = findWorkingGroup(group.id)
+  const editableGroup = !baseGroup && workingGroup ? workingGroup : group
+  const rules = !baseGroup && workingGroup ? workingGroup.rules : group.rules
   const det = document.createElement('details')
   det.className = 'group'
   det.open = true
@@ -159,24 +208,80 @@ function renderGroup (group, state) {
   })
   cb.addEventListener('click', (e) => e.stopPropagation())
   sum.appendChild(cb)
-  const name = document.createElement('span')
-  name.textContent = group.name + ' '
-  sum.appendChild(name)
-  const tag = document.createElement('span')
-  tag.className = 'rule-pat'
-  tag.textContent = `(${group.id})`
-  sum.appendChild(tag)
+  if (!workingGroup) {
+    const name = document.createElement('span')
+    name.textContent = group.name + ' '
+    sum.appendChild(name)
+    const tag = document.createElement('span')
+    tag.className = 'rule-pat'
+    tag.textContent = `(${group.id})`
+    sum.appendChild(tag)
+  } else {
+    const editor = document.createElement('span')
+    editor.className = 'group-title-editor'
+    editor.addEventListener('click', (e) => e.stopPropagation())
+    editor.appendChild(makeInput('name-input', workingGroup.name, '组名称', (v) => {
+      workingGroup.name = v
+      refreshCustomGroupPicker()
+    }))
+    const idInput = makeInput('id-input', workingGroup.id, '唯一 id', (v) => {
+      workingGroup.id = v
+      refreshCustomGroupPicker()
+    })
+    if (baseGroup) {
+      idInput.disabled = true
+      idInput.title = '已有组 id 用来合并内置或远程规则，不能在覆盖层修改'
+    }
+    editor.appendChild(idInput)
+    sum.appendChild(editor)
+  }
+  const source = getGroupSource(group.id)
+  sum.appendChild(makeSourceBadge(source))
   const badge = document.createElement('span')
   badge.className = 'badge'
   badge.style.marginLeft = 'auto'
-  badge.textContent = `${group.rules.length} 规则`
+  badge.textContent = `${rules.length} 规则`
   sum.appendChild(badge)
+  const addRule = document.createElement('button')
+  addRule.className = 'subtle'
+  addRule.textContent = '+ 规则'
+  addRule.title = '在此组下添加自定义规则'
+  addRule.addEventListener('click', (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    addCustomRuleToGroup(editableGroup.id)
+  })
+  sum.appendChild(addRule)
+  if (workingGroup) {
+    const removeCustom = document.createElement('button')
+    removeCustom.className = 'subtle danger'
+    removeCustom.textContent = baseGroup ? '清空自定义' : '删除组'
+    removeCustom.title = baseGroup ? '删除此组下的自定义规则和覆盖' : '删除这个自定义组'
+    removeCustom.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const message = baseGroup
+        ? `清空「${baseGroup.name}」下的所有自定义规则和覆盖？内置/远程规则不会删除。`
+        : `删除组「${workingGroup.name}」？`
+      if (!confirm(message)) return
+      workingCustomGroups = workingCustomGroups.filter(item => item !== workingGroup)
+      refreshCustomGroupPicker()
+      renderRuleTree()
+    })
+    sum.appendChild(removeCustom)
+  }
   det.appendChild(sum)
 
   const body = document.createElement('div')
   body.className = 'group-body'
-  for (const rule of group.rules) {
-    body.appendChild(renderRuleRow(group, rule, state))
+  if (!rules.length) {
+    const empty = document.createElement('div')
+    empty.className = 'empty-hint'
+    empty.textContent = '此组下还没有规则'
+    body.appendChild(empty)
+  }
+  for (const rule of rules) {
+    body.appendChild(renderRuleRow(editableGroup, rule, state))
   }
   det.appendChild(body)
   return det
@@ -184,6 +289,8 @@ function renderGroup (group, state) {
 
 function renderRuleRow (group, rule, state) {
   const ruleKey = `${group.id}/${rule.id}`
+  const workingRule = findWorkingRule(group.id, rule.id)
+  const displayRule = workingRule || rule
   const wrap = document.createElement('div')
   wrap.className = 'rule'
 
@@ -193,43 +300,65 @@ function renderRuleRow (group, rule, state) {
     await toggleDisabled(ruleKey, !checked)
   })
   head.appendChild(cb)
+  const main = document.createElement('span')
+  main.className = 'rule-main'
   const name = document.createElement('span')
   name.className = 'rule-name'
-  name.textContent = rule.name || rule.id
-  head.appendChild(name)
+  name.textContent = displayRule.name || displayRule.id
+  main.appendChild(name)
   const pat = document.createElement('span')
   pat.className = 'rule-pat'
-  pat.textContent = rule.patterns.join(' | ')
-  head.appendChild(pat)
+  pat.textContent = (displayRule.patterns || []).join(' | ')
+  main.appendChild(pat)
+  head.appendChild(main)
+  head.appendChild(makeSourceBadge(getRuleSource(group.id, displayRule)))
+  if (!workingRule) {
+    const edit = document.createElement('button')
+    edit.className = 'subtle'
+    edit.textContent = '编辑'
+    edit.title = '复制到自定义规则中编辑；同 id 规则会覆盖内置或远程版本'
+    edit.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      editRuleOverride(group, rule)
+    })
+    head.appendChild(edit)
+  }
   wrap.appendChild(head)
 
-  const links = document.createElement('div')
-  links.className = 'links'
-  rule.links.forEach((link, idx) => {
-    const linkId = link.id || String(idx)
-    const linkKey = `${ruleKey}/${linkId}`
-    const row = document.createElement('div')
-    row.className = 'link-row'
-    const lcb = makeCheckbox(!state.disabled[linkKey], async (checked) => {
-      await toggleDisabled(linkKey, !checked)
+  if (workingRule) {
+    const workingGroup = ensureWorkingGroup(group.id, group.name)
+    const ruleIndex = workingGroup.rules.indexOf(workingRule)
+    wrap.appendChild(buildRuleCard(workingGroup, workingRule, ruleIndex))
+  } else {
+    const links = document.createElement('div')
+    links.className = 'links'
+    displayRule.links.forEach((link, idx) => {
+      const linkId = link.id || String(idx)
+      const linkKey = `${ruleKey}/${linkId}`
+      const row = document.createElement('div')
+      row.className = 'link-row'
+      const lcb = makeCheckbox(!state.disabled[linkKey], async (checked) => {
+        await toggleDisabled(linkKey, !checked)
+      })
+      row.appendChild(lcb)
+      const ico = document.createElement('span')
+      ico.className = 'preview-icon'
+      ico.innerHTML = iconHTML(link.icon)
+      row.appendChild(ico)
+      const lab = document.createElement('span')
+      lab.textContent = link.label
+      row.appendChild(lab)
+      if (link.desc) {
+        const d = document.createElement('span')
+        d.className = 'desc'
+        d.textContent = '— ' + link.desc
+        row.appendChild(d)
+      }
+      links.appendChild(row)
     })
-    row.appendChild(lcb)
-    const ico = document.createElement('span')
-    ico.className = 'preview-icon'
-    ico.innerHTML = iconHTML(link.icon)
-    row.appendChild(ico)
-    const lab = document.createElement('span')
-    lab.textContent = link.label
-    row.appendChild(lab)
-    if (link.desc) {
-      const d = document.createElement('span')
-      d.className = 'desc'
-      d.textContent = '— ' + link.desc
-      row.appendChild(d)
-    }
-    links.appendChild(row)
-  })
-  wrap.appendChild(links)
+    wrap.appendChild(links)
+  }
   return wrap
 }
 
@@ -252,74 +381,229 @@ async function toggleDisabled (key, disabled) {
   await setState({ [STORAGE_KEYS.disabled]: next })
 }
 
-// ─── Structured custom-rule editor ─────────────────────────────────────────
+// ─── Rule management editor ────────────────────────────────────────────────
 
-function renderCustomEditor () {
-  const root = $('custom-editor')
-  root.innerHTML = ''
-  if (!workingCustomGroups.length) {
-    const hint = document.createElement('div')
-    hint.className = 'empty-hint'
-    hint.textContent = '还没有自定义规则。点上方「+ 添加组」开始。'
-    root.appendChild(hint)
-    return
-  }
-  workingCustomGroups.forEach((g, gi) => root.appendChild(buildGroupCard(g, gi)))
+function getBaseRuleSet (state) {
+  return mergeRules({ ...state, customGroups: [] })
 }
 
-function buildGroupCard (group, gi) {
-  const card = document.createElement('div')
-  card.className = 'cgroup'
-
-  const head = document.createElement('div')
-  head.className = 'cgroup-head'
-  head.appendChild(makeInput('name-input', group.name, '组名称', (v) => { group.name = v }))
-  head.appendChild(makeInput('id-input', group.id, '唯一 id', (v) => { group.id = v }))
-  const addRule = document.createElement('button')
-  addRule.textContent = '+ 规则'
-  addRule.onclick = () => {
-    group.rules.push({
-      id: 'rule-' + Math.random().toString(36).slice(2, 7),
-      name: '新规则',
-      patterns: [''],
-      links: [{ id: 'link-1', label: '', icon: '↗', url: '', desc: '' }]
-    })
-    renderCustomEditor()
+function getAvailableGroupsForEditor () {
+  const groups = []
+  const seen = new Set()
+  for (const group of baseRuleSet.groups || []) {
+    groups.push({ id: group.id, name: group.name, baseGroup: group })
+    seen.add(group.id)
   }
-  head.appendChild(addRule)
-  const delGroup = document.createElement('button')
-  delGroup.className = 'subtle danger'
-  delGroup.textContent = '删除组'
-  delGroup.onclick = () => {
-    if (!confirm(`删除组「${group.name}」？`)) return
-    workingCustomGroups.splice(gi, 1)
-    renderCustomEditor()
+  for (const group of workingCustomGroups || []) {
+    if (seen.has(group.id)) continue
+    groups.push({ id: group.id, name: group.name, baseGroup: null })
+    seen.add(group.id)
   }
-  head.appendChild(delGroup)
-  card.appendChild(head)
+  return groups
+}
 
-  const body = document.createElement('div')
-  body.className = 'cgroup-body'
-  if (!group.rules.length) {
-    const empty = document.createElement('div')
-    empty.className = 'empty-hint'
-    empty.textContent = '此组下还没有规则'
-    body.appendChild(empty)
+function refreshCustomGroupPicker () {
+  const select = $('add-rule-group')
+  if (!select) return
+  const previous = select.value
+  select.innerHTML = ''
+  for (const group of getAvailableGroupsForEditor()) {
+    const option = document.createElement('option')
+    option.value = group.id
+    option.textContent = `${group.name || group.id} (${group.id})`
+    select.appendChild(option)
+  }
+  if ([...select.options].some(option => option.value === previous)) {
+    select.value = previous
+  }
+}
+
+function findBaseGroup (groupId) {
+  return (baseRuleSet.groups || []).find(group => group.id === groupId) || null
+}
+
+function findWorkingGroup (groupId) {
+  return workingCustomGroups.find(group => group.id === groupId) || null
+}
+
+function findBaseRule (groupId, ruleId) {
+  const group = findBaseGroup(groupId)
+  return group ? group.rules.find(rule => rule.id === ruleId) || null : null
+}
+
+function findWorkingRule (groupId, ruleId) {
+  const group = findWorkingGroup(groupId)
+  return group ? group.rules.find(rule => rule.id === ruleId) || null : null
+}
+
+function getGroupSource (groupId) {
+  const baseGroup = findBaseGroup(groupId)
+  const workingGroup = findWorkingGroup(groupId)
+  if (!baseGroup) return { kind: 'custom', label: '自定义组' }
+  if (workingGroup && workingGroup.name !== baseGroup.name) return { kind: 'modified', label: '已改名' }
+  if (workingGroup && (workingGroup.rules || []).length) return { kind: 'modified', label: '含自定义' }
+  return { kind: 'base', label: '内置/远程' }
+}
+
+function getRuleSource (groupId, rule) {
+  const baseRule = findBaseRule(groupId, rule.id)
+  const workingRule = findWorkingRule(groupId, rule.id)
+  if (!baseRule) return { kind: 'custom', label: '自定义' }
+  if (workingRule && rulesAreEqual(baseRule, workingRule)) return { kind: 'draft', label: '编辑中' }
+  if (workingRule) return { kind: 'modified', label: '已修改' }
+  return { kind: 'base', label: '内置/远程' }
+}
+
+function makeSourceBadge ({ kind, label }) {
+  const badge = document.createElement('span')
+  badge.className = 'source-badge ' + kind
+  badge.textContent = label
+  return badge
+}
+
+function ensureWorkingGroup (groupId, fallbackName) {
+  let group = findWorkingGroup(groupId)
+  if (group) return group
+  const baseGroup = findBaseGroup(groupId)
+  group = {
+    id: groupId,
+    name: fallbackName || (baseGroup && baseGroup.name) || groupId,
+    rules: []
+  }
+  workingCustomGroups.push(group)
+  return group
+}
+
+function addCustomRuleToGroup (groupId) {
+  if (!groupId) return
+  const baseGroup = findBaseGroup(groupId)
+  const group = ensureWorkingGroup(groupId, baseGroup && baseGroup.name)
+  const rule = createBlankRule(groupId)
+  group.rules.push(rule)
+  refreshCustomGroupPicker()
+  renderRuleTree()
+  setStatus('custom-status', '已添加规则，保存后生效', '')
+  scrollRuleEditorIntoView(group.id, rule.id)
+}
+
+function editRuleOverride (group, rule) {
+  const workingGroup = ensureWorkingGroup(group.id, group.name)
+  const existing = workingGroup.rules.find(item => item.id === rule.id)
+  if (!existing) {
+    workingGroup.rules.push(deepClone(rule))
+  }
+  refreshCustomGroupPicker()
+  renderRuleTree()
+  setStatus('custom-status', '已放入自定义规则，保存后会覆盖同 id 的内置或远程规则', '')
+  scrollRuleEditorIntoView(group.id, rule.id)
+}
+
+function createBlankRule (groupId) {
+  return {
+    id: nextRuleId(groupId),
+    name: '新规则',
+    patterns: [''],
+    links: [{ id: 'link-1', label: '', icon: '↗', url: '', desc: '' }]
+  }
+}
+
+function nextRuleId (groupId) {
+  const used = new Set()
+  const baseGroup = findBaseGroup(groupId)
+  for (const rule of (baseGroup && baseGroup.rules) || []) used.add(rule.id)
+  const customGroup = workingCustomGroups.find(group => group.id === groupId)
+  for (const rule of (customGroup && customGroup.rules) || []) used.add(rule.id)
+  for (let i = 1; i < 1000; i++) {
+    const id = `rule-${i}`
+    if (!used.has(id)) return id
+  }
+  return 'rule-' + Math.random().toString(36).slice(2, 7)
+}
+
+function scrollRuleEditorIntoView (groupId, ruleId) {
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.crule')
+    const card = [...cards].find(item => item.dataset.groupId === groupId && item.dataset.ruleId === ruleId)
+    if (!card) return
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    card.classList.add('focus-flash')
+    const firstInput = card.querySelector('input')
+    if (firstInput) firstInput.focus()
+    setTimeout(() => card.classList.remove('focus-flash'), 1200)
+  }, 0)
+}
+
+function moveRuleToGroup (sourceGroup, rule, targetGroupId) {
+  if (!targetGroupId || sourceGroup.id === targetGroupId) return
+  const targetBaseGroup = findBaseGroup(targetGroupId)
+  const targetGroup = ensureWorkingGroup(targetGroupId, targetBaseGroup && targetBaseGroup.name)
+  const sourceIndex = sourceGroup.rules.indexOf(rule)
+  if (sourceIndex < 0) return
+
+  sourceGroup.rules.splice(sourceIndex, 1)
+  const conflict = targetGroup.rules.some(item => item.id === rule.id) || !!findBaseRule(targetGroup.id, rule.id)
+  if (conflict) {
+    rule.id = nextRuleId(targetGroup.id)
+    setStatus('custom-status', `目标组已有同 id 规则，已自动改为 ${rule.id}`, '')
   } else {
-    group.rules.forEach((rule, ri) => body.appendChild(buildRuleCard(group, rule, ri)))
+    setStatus('custom-status', `已移动到「${targetGroup.name || targetGroup.id}」，保存后生效`, '')
   }
-  card.appendChild(body)
-  return card
+  targetGroup.rules.push(rule)
+  cleanupEmptyWorkingGroups()
+  refreshCustomGroupPicker()
+  renderRuleTree()
+  scrollRuleEditorIntoView(targetGroup.id, rule.id)
+}
+
+function cleanupEmptyWorkingGroups () {
+  workingCustomGroups = workingCustomGroups.filter(group => {
+    const baseGroup = findBaseGroup(group.id)
+    if (!baseGroup) return true
+    return (group.rules || []).length > 0 || group.name !== baseGroup.name
+  })
+}
+
+function normalizeCustomGroupsForSave (groups) {
+  const normalized = []
+  for (const group of groups || []) {
+    const baseGroup = findBaseGroup(group.id)
+    const nextGroup = deepClone(group)
+    if (baseGroup) {
+      nextGroup.rules = (nextGroup.rules || []).filter(rule => {
+        const baseRule = baseGroup.rules.find(item => item.id === rule.id)
+        return !(baseRule && rulesAreEqual(baseRule, rule))
+      })
+      if (!nextGroup.rules.length && nextGroup.name === baseGroup.name) continue
+    }
+    normalized.push(nextGroup)
+  }
+  return normalized
 }
 
 function buildRuleCard (group, rule, ri) {
   const card = document.createElement('div')
   card.className = 'crule'
+  card.dataset.groupId = group.id
+  card.dataset.ruleId = rule.id
 
   const head = document.createElement('div')
   head.className = 'crule-head'
   head.appendChild(makeInput('name-input', rule.name, '规则名', (v) => { rule.name = v }))
   head.appendChild(makeInput('id-input', rule.id, '规则 id', (v) => { rule.id = v }))
+
+  const groupSelect = document.createElement('select')
+  groupSelect.title = '移动到其他分组'
+  groupSelect.style.flex = '1'
+  groupSelect.style.minWidth = '160px'
+  for (const targetGroup of getAvailableGroupsForEditor()) {
+    const option = document.createElement('option')
+    option.value = targetGroup.id
+    option.textContent = targetGroup.name || targetGroup.id
+    groupSelect.appendChild(option)
+  }
+  groupSelect.value = group.id
+  groupSelect.addEventListener('change', () => moveRuleToGroup(group, rule, groupSelect.value))
+  head.appendChild(groupSelect)
 
   const validateBtn = document.createElement('button')
   validateBtn.className = 'subtle'
@@ -341,7 +625,7 @@ function buildRuleCard (group, rule, ri) {
   del.title = '删除规则'
   del.onclick = () => {
     group.rules.splice(ri, 1)
-    renderCustomEditor()
+    renderRuleTree()
   }
   head.appendChild(del)
   card.appendChild(head)
@@ -376,7 +660,7 @@ function buildRuleCard (group, rule, ri) {
   addLink.style.marginTop = '4px'
   addLink.onclick = () => {
     rule.links.push({ id: 'link-' + (rule.links.length + 1), label: '', icon: '↗', url: '', desc: '' })
-    renderCustomEditor()
+    renderRuleTree()
   }
   linksWrap.appendChild(addLink)
   linksField.appendChild(linksWrap)
@@ -411,7 +695,7 @@ function buildLinkRow (rule, link, li) {
   del.title = '删除链接'
   del.onclick = () => {
     rule.links.splice(li, 1)
-    renderCustomEditor()
+    renderRuleTree()
   }
   row.appendChild(del)
   return row
@@ -597,10 +881,7 @@ async function importConfig (e) {
     let nextCustom = data.customGroups
     let nextDisabled = data.disabled || {}
     if (mode === 'merge') {
-      const byId = new Map()
-      for (const g of state.customGroups || []) byId.set(g.id, g)
-      for (const g of data.customGroups) byId.set(g.id, g)
-      nextCustom = [...byId.values()]
+      nextCustom = mergeImportedCustomGroups(state.customGroups || [], data.customGroups)
       nextDisabled = { ...(state.disabled || {}), ...(data.disabled || {}) }
     }
     const patch = {
@@ -609,15 +890,46 @@ async function importConfig (e) {
     }
     if (data.remoteUrl) patch[STORAGE_KEYS.remoteUrl] = data.remoteUrl
     await setState(patch)
+    const updatedState = await getState()
+    baseRuleSet = getBaseRuleSet(updatedState)
     workingCustomGroups = deepClone(nextCustom)
-    renderCustomEditor()
+    refreshCustomGroupPicker()
     renderRuleTree()
     if (data.remoteUrl) $('remote-url').value = data.remoteUrl
-    renderRemoteStatus(await getState())
+    renderRemoteStatus(updatedState)
     setStatus('io-status', `已${mode === 'merge' ? '合并' : '覆盖'}导入（${data.customGroups.length} 个组）`, 'ok')
   } catch (err) {
     setStatus('io-status', '导入失败：' + (err.message || err), 'error')
   }
+}
+
+function mergeImportedCustomGroups (currentGroups, importedGroups) {
+  const byId = new Map()
+  for (const group of currentGroups || []) byId.set(group.id, deepClone(group))
+
+  for (const importedGroup of importedGroups || []) {
+    const currentGroup = byId.get(importedGroup.id)
+    if (!currentGroup) {
+      byId.set(importedGroup.id, deepClone(importedGroup))
+      continue
+    }
+
+    const currentRules = currentGroup.rules || []
+    const currentRuleById = new Map(currentRules.map(rule => [rule.id, rule]))
+    for (const importedRule of importedGroup.rules || []) {
+      const currentRule = currentRuleById.get(importedRule.id)
+      if (!currentRule) {
+        const cloned = deepClone(importedRule)
+        currentRules.push(cloned)
+        currentRuleById.set(cloned.id, cloned)
+      }
+    }
+    currentGroup.rules = currentRules.filter((rule, index, rules) => {
+      return rules.findIndex(item => item.id === rule.id && rulesAreEqual(item, rule)) === index
+    })
+  }
+
+  return [...byId.values()]
 }
 
 function chooseImportMode () {

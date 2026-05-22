@@ -43,7 +43,7 @@ export async function setState (patch) {
   await chrome.storage.local.set(patch)
 }
 
-// Merge default + remote (remote groups by id replace defaults) + custom (appended).
+// Merge default + remote (remote groups by id replace defaults) + custom overlays.
 export function mergeRules (state) {
   const remote = isValidRuleSet(state.remoteRules) ? state.remoteRules : null
   const remoteById = new Map()
@@ -52,18 +52,76 @@ export function mergeRules (state) {
   }
   const merged = []
   for (const g of DEFAULT_RULES.groups) {
-    merged.push(remoteById.has(g.id) ? remoteById.get(g.id) : g)
+    merged.push(deepClone(remoteById.has(g.id) ? remoteById.get(g.id) : g))
     remoteById.delete(g.id)
   }
   // Remote-only groups (not present in defaults) come next.
   if (remote) {
     for (const g of remote.groups) {
-      if (remoteById.has(g.id)) merged.push(g)
+      if (remoteById.has(g.id)) merged.push(deepClone(g))
     }
   }
-  // Custom groups last.
-  for (const g of state.customGroups || []) merged.push(g)
+  // Custom groups can target an existing group id. In that case custom rules are
+  // merged into the group; same rule id overrides the default/remote rule unless
+  // the rule is byte-for-byte equivalent after canonicalization.
+  const mergedById = new Map(merged.map((g, i) => [g.id, i]))
+  for (const customGroup of state.customGroups || []) {
+    if (!customGroup || typeof customGroup.id !== 'string') continue
+    const existingIndex = mergedById.get(customGroup.id)
+    if (existingIndex == null) {
+      mergedById.set(customGroup.id, merged.length)
+      merged.push(deepClone(customGroup))
+      continue
+    }
+    mergeCustomGroupIntoBase(merged[existingIndex], customGroup)
+  }
   return { version: 1, groups: merged }
+}
+
+function mergeCustomGroupIntoBase (baseGroup, customGroup) {
+  if (typeof customGroup.name === 'string' && customGroup.name) {
+    baseGroup.name = customGroup.name
+  }
+  if (!Array.isArray(customGroup.rules)) return
+  const ruleIndexById = new Map(baseGroup.rules.map((rule, index) => [rule.id, index]))
+  const baseRuleByFingerprint = new Map(baseGroup.rules.map(rule => [canonicalRule(rule), rule]))
+
+  for (const customRule of customGroup.rules) {
+    if (!customRule || typeof customRule.id !== 'string') continue
+    if (baseRuleByFingerprint.has(canonicalRule(customRule))) continue
+
+    const existingIndex = ruleIndexById.get(customRule.id)
+    if (existingIndex == null) {
+      ruleIndexById.set(customRule.id, baseGroup.rules.length)
+      baseGroup.rules.push(deepClone(customRule))
+    } else {
+      baseGroup.rules[existingIndex] = deepClone(customRule)
+    }
+  }
+}
+
+export function rulesAreEqual (left, right) {
+  return canonicalRule(left) === canonicalRule(right)
+}
+
+function canonicalRule (rule) {
+  return stableStringify(rule || null)
+}
+
+function stableStringify (value) {
+  if (Array.isArray(value)) {
+    return '[' + value.map(stableStringify).join(',') + ']'
+  }
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(key => {
+      return JSON.stringify(key) + ':' + stableStringify(value[key])
+    }).join(',') + '}'
+  }
+  return JSON.stringify(value)
+}
+
+function deepClone (obj) {
+  return JSON.parse(JSON.stringify(obj))
 }
 
 export function isValidRuleSet (obj) {
