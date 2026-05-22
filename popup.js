@@ -1,5 +1,5 @@
 import { getState, mergeRules, findLinks } from './rules-engine.js'
-import { iconHTML, loadIconCache } from './icon-render.js'
+import { hydrateIconValues, iconHTML, loadIconCache } from './icon-render.js'
 
 document.getElementById('open-options').addEventListener('click', async (event) => {
   event.preventDefault()
@@ -20,6 +20,9 @@ async function render () {
   const state = await getState()
   const ruleSet = mergeRules(state)
   const matches = findLinks(url, ruleSet, state.disabled)
+  if (state.extIcons) {
+    await hydrateIconValues(matches.map(({ link }) => link.icon))
+  }
   if (!matches.length) {
     content.innerHTML = '<div class="empty">此页面无可用跳转<br><br>可在「设置」中添加自定义规则<br>或配置远程规则源。</div>'
     return

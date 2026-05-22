@@ -1,5 +1,5 @@
 import { getState, setState, mergeRules, isValidRuleSet, rulesAreEqual, STORAGE_KEYS } from './rules-engine.js'
-import { iconHTML, loadIconCache, clearIconCache, getIconCache } from './icon-render.js'
+import { iconHTML, loadIconCache, clearIconCache, getIconCache, hydrateIconValues, normalizeIconKey } from './icon-render.js'
 import { openIconPicker, configureExtIcons } from './icon-picker.js'
 import { filterRuleGroups } from './rule-view.js'
 import {
@@ -18,6 +18,7 @@ let workingCustomGroups = [] // editable copy until "Save"
 let baseRuleSet = { version: 1, groups: [] }
 let expandedGroupIds = new Set()
 let suppressFilterAutoOpen = false
+let extIconsEnabled = false
 
 async function init () {
   await loadIconCache()
@@ -27,11 +28,14 @@ async function init () {
   chrome.runtime.sendMessage({ type: 'track-telemetry', eventName: 'options_open' })
 
   // Extended icons toggle
-  configureExtIcons(state.extIcons)
-  $('ext-icons-toggle').checked = !!state.extIcons
+  extIconsEnabled = !!state.extIcons
+  configureExtIcons(extIconsEnabled)
+  $('ext-icons-toggle').checked = extIconsEnabled
   $('ext-icons-toggle').addEventListener('change', async (e) => {
+    extIconsEnabled = e.target.checked
     await setState({ [STORAGE_KEYS.extIcons]: e.target.checked })
     configureExtIcons(e.target.checked)
+    renderRuleTree()
   })
   updateIconCacheMeta()
   $('clear-icon-cache').addEventListener('click', async () => {
@@ -213,6 +217,10 @@ async function disconnectRemoteSource () {
 
 async function renderRuleTree () {
   const { state, groups, autoOpenGroupIds, hasActiveFilters, totalGroups, totalRules } = await getCurrentRuleView()
+  if (state.extIcons) {
+    const hydrated = await hydrateIconValues(iconValuesForGroups(groups))
+    if (hydrated.length) updateIconCacheMeta()
+  }
   const tree = $('rule-tree')
   tree.innerHTML = ''
   renderRuleBrowserStatus(groups, hasActiveFilters, totalGroups, totalRules)
@@ -776,8 +784,17 @@ function buildLinkRow (rule, link, li) {
   iconBtn.innerHTML = iconHTML(link.icon)
   iconBtn.addEventListener('click', () => {
     openIconPicker(link.icon, (value) => {
-      link.icon = value
-      iconBtn.innerHTML = iconHTML(value)
+      const iconValue = normalizeIconKey(value) || value
+      link.icon = iconValue
+      iconBtn.innerHTML = iconHTML(iconValue)
+      if (extIconsEnabled) {
+        hydrateIconValues([iconValue]).then((hydrated) => {
+          if (hydrated.length) {
+            iconBtn.innerHTML = iconHTML(iconValue)
+            updateIconCacheMeta()
+          }
+        })
+      }
     })
   })
   row.appendChild(iconBtn)
@@ -1060,6 +1077,18 @@ function setStatus (id, text, kind) {
 
 function deepClone (obj) {
   return JSON.parse(JSON.stringify(obj))
+}
+
+function iconValuesForGroups (groups) {
+  const values = []
+  for (const group of groups || []) {
+    for (const rule of group.rules || []) {
+      for (const link of rule.links || []) {
+        values.push(link.icon)
+      }
+    }
+  }
+  return values
 }
 
 function updateIconCacheMeta () {
