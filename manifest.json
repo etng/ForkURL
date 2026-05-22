@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ForkURL",
   "description": "在 GitHub / npm / GitLab 等页面一键跳转 Pages、Raw、IDE、CDN 等工具，规则可远程同步与自定义",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "homepage_url": "https://forkurl.0o666.xyz/",
   "permissions": [
     "tabs",
