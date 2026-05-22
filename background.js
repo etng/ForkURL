@@ -3,46 +3,59 @@
 
 import { getState, mergeRules, findLinks, fetchRemoteRules } from './rules-engine.js'
 import { clearTelemetryLocalState, trackTelemetryEvent } from './telemetry.js'
+import { isMissingTabError } from './extension-errors.js'
 
 const BADGE_BG = '#0969da'
 const REFRESH_ALARM = 'url-switcher-remote-refresh'
 const REFRESH_PERIOD_MIN = 60 * 6 // 6 hours
 
-function ignoreAsyncError (promise) {
-  promise.catch(() => {})
+function ignoreAsyncError (promise, shouldIgnore = () => false) {
+  promise.catch((error) => {
+    if (shouldIgnore(error)) return
+    console.warn('ForkURL background task failed', error)
+  })
+}
+
+function updateBadgeForTabQuietly (tabId, url) {
+  ignoreAsyncError(updateBadgeForTab(tabId, url), isMissingTabError)
 }
 
 async function updateBadgeForTab (tabId, url) {
-  if (!url || !/^https?:/i.test(url)) {
-    await chrome.action.setBadgeText({ tabId, text: '' })
-    return
-  }
-  const state = await getState()
-  const ruleSet = mergeRules(state)
-  const matches = findLinks(url, ruleSet, state.disabled)
-  if (matches.length > 0) {
-    await chrome.action.setBadgeText({ tabId, text: String(matches.length) })
-    await chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_BG })
-    if (chrome.action.setBadgeTextColor) {
-      try { await chrome.action.setBadgeTextColor({ tabId, color: '#ffffff' }) } catch {}
+  try {
+    if (!url || !/^https?:/i.test(url)) {
+      await chrome.action.setBadgeText({ tabId, text: '' })
+      return
     }
-    await chrome.action.setTitle({ tabId, title: `URL Switcher · ${matches.length} 个跳转` })
-  } else {
-    await chrome.action.setBadgeText({ tabId, text: '' })
-    await chrome.action.setTitle({ tabId, title: 'URL Switcher（此页面无可用跳转）' })
+    const state = await getState()
+    const ruleSet = mergeRules(state)
+    const matches = findLinks(url, ruleSet, state.disabled)
+    if (matches.length > 0) {
+      await chrome.action.setBadgeText({ tabId, text: String(matches.length) })
+      await chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE_BG })
+      if (chrome.action.setBadgeTextColor) {
+        try { await chrome.action.setBadgeTextColor({ tabId, color: '#ffffff' }) } catch {}
+      }
+      await chrome.action.setTitle({ tabId, title: `URL Switcher · ${matches.length} 个跳转` })
+    } else {
+      await chrome.action.setBadgeText({ tabId, text: '' })
+      await chrome.action.setTitle({ tabId, title: 'URL Switcher（此页面无可用跳转）' })
+    }
+  } catch (error) {
+    if (isMissingTabError(error)) return
+    throw error
   }
 }
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
-    updateBadgeForTab(tabId, tab.url || changeInfo.url)
+    updateBadgeForTabQuietly(tabId, tab.url || changeInfo.url)
   }
 })
 
 chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const tab = await chrome.tabs.get(tabId)
-    updateBadgeForTab(tabId, tab.url)
+    updateBadgeForTabQuietly(tabId, tab.url)
   } catch {}
 })
 
@@ -120,7 +133,7 @@ async function refreshAllTabs () {
   try {
     const tabs = await chrome.tabs.query({})
     for (const t of tabs) {
-      if (t.id != null) updateBadgeForTab(t.id, t.url)
+      if (t.id != null) updateBadgeForTabQuietly(t.id, t.url)
     }
   } catch {}
 }

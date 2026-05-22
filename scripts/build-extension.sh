@@ -41,12 +41,15 @@ trap 'rm -rf "$STAGE"' EXIT
 INCLUDES=(
   manifest.json
   background.js
+  extension-errors.js
   popup.html
   popup.js
   options.html
   options.js
   telemetry.js
   rules-engine.js
+  rule-view.js
+  config-format.js
   default-rules.js
   rules.json
   icon-library.js

@@ -9,9 +9,9 @@
 - **工具栏图标徽标**：匹配页面显示可用跳转数量，不再侵入页面 DOM
 - **远程规则源**：从 GitHub raw 等公开 URL 同步规则 JSON，每 6 小时自动刷新
 - **三层启停**：组 / 规则 / 单链接 任意粒度勾选启用或禁用
-- **可视化自定义编辑器**：表单式添加自己的组、规则、链接，无需手写 JSON
+- **浏览优先的规则管理**：默认折叠全部规则组，支持搜索、状态筛选、展开全部 / 折叠全部，并在展开后就近编辑
 - **可视化图标选择器**：内置 71 个图标（Simple Icons + Lucide），可选启用 Iconify 在线搜索 200,000+ 图标，选中后自动缓存离线可用
-- **导入 / 导出**：把自己的配置保存成文件，迁移或备份
+- **导入 / 导出**：用 `fork-url-config` 配置文件备份全部自定义配置，也可以只导出某个规则组的自定义部分
 
 ## 默认跳转目标
 
@@ -47,7 +47,7 @@
 
 > 这张表由 `scripts/sync-rule-docs.mjs` 从 `rules.json` 生成。合并规则提交后，CI 会同步更新 README、官网首页规则段落和 `docs/default-rules.md`。
 
-默认规则只是起点。你可以在扩展设置页新增自己的规则组、正则和跳转链接，也可以配置远程规则源同步团队规则；提交到官方源的规则审核合并后会进入这张表。
+默认规则只是起点。你可以在扩展设置页的规则管理中新增自己的规则组、正则和跳转链接，也可以配置远程规则源同步团队规则；提交到官方源的规则审核合并后会进入这张表。
 
 <!-- DEFAULT_RULES_TABLE_END -->
 
@@ -75,6 +75,14 @@ https://raw.githubusercontent.com/etng/ForkURL/main/rules.json
 ```
 
 点「立即更新」拉取最新规则。
+
+## 管理规则与配置
+
+设置页的规则管理以浏览为主：默认折叠全部规则组，顶部支持搜索、按状态筛选、展开全部和折叠全部。命中搜索或筛选条件时，相关规则组会自动展开；手动折叠全部后会尊重你的选择。
+
+展开规则组后，可以在组内顶部新增规则、编辑组名 / 组 ID、导出该组自定义部分，或清空该组的自定义覆盖。内置和远程规则不能直接删除；你可以禁用它们，也可以编辑成自己的覆盖版本。删除覆盖后会恢复到底层内置或远程规则。
+
+配置导出文件的 `type` 是 `fork-url-config`，导入时仍兼容旧版 `url-switcher-config`。底部的「导出配置」会导出全部自定义规则、远程地址和禁用状态；规则组内的「导出」只导出当前组的自定义部分，文件名使用 `fork-url-config-{groupId}.json`。
 
 ## 官网与隐私
 
@@ -122,7 +130,7 @@ ForkURL 会在浏览器本地读取当前标签页 URL，用来匹配规则并�
 
 ## 数据合并优先级
 
-默认内置规则 → 远程规则（按 group.id 覆盖同名组）→ 自定义规则（追加）→ 用户禁用集合作最后过滤。
+默认内置规则 → 远程规则（按 `group.id` 覆盖同名组）→ 自定义规则覆盖层（同 `group.id` 合并，同 `rule.id` 覆盖；完全相同规则去重）→ 用户禁用集合作最后过滤。
 
 ## 图标值的三种形式
 
@@ -138,7 +146,7 @@ ForkURL 会在浏览器本地读取当前标签页 URL，用来匹配规则并�
 
 不用 fork 仓库 / 写代码也能贡献新规则。**最简方式**：
 
-1. 在扩展设置页 → 自定义规则里编好你的规则
+1. 在扩展设置页 → 规则管理里编好你的规则
 2. 点这条规则旁的「🔍 验证」按钮，输入示例 URL 验证生成的目标地址正确无误
 3. 点「📤 提交」按钮 —— 自动跳转到 GitHub Issue 表单，所有字段已预填
 4. 直接点 Submit 提交即可
@@ -179,11 +187,13 @@ bash scripts/build-icon-library.sh
 ### 发布流程
 
 ```bash
-# 1. 在 main 上把 manifest.json 的 version 改成 2.1.0
+# 1. 在 main 上把 manifest.json 的 version 改成 2.2.0
 # 2. 提交并打 tag
-git commit -am "release 2.1.0"
-git tag v2.1.0
-git push && git push --tags
+git add manifest.json
+git commit -m "chore(release): 🔧 release v2.2.0"
+git tag v2.2.0
+git push origin main
+git push origin v2.2.0
 # 3. CI 自动校验、打包、创建 GitHub Release 上传 zip
 ```
 
@@ -191,7 +201,7 @@ git push && git push --tags
 
 ```bash
 bash scripts/build-extension.sh                   # 仅打包，输出到 dist/
-bash scripts/build-extension.sh --check-version v2.1.0  # 同时校验 manifest 版本
+bash scripts/build-extension.sh --check-version v2.2.0  # 同时校验 manifest 版本
 ```
 
 ## License
