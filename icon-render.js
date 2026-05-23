@@ -7,6 +7,7 @@ const failedIconKeys = new Set()
 const pendingIconFetches = new Map()
 const ICON_KEY_RE = /^[\w-]+:[\w.-]+$/
 const AUTO_FETCH_PREFIXES = new Set(['simple', 'lucide'])
+const DEFAULT_ICON_FALLBACK = '↗'
 
 export async function loadIconCache () {
   try {
@@ -24,8 +25,9 @@ export function iconHTML (value) {
   if (key) {
     if (ICON_LIBRARY[key]) return ICON_LIBRARY[key].svg
     if (cachedIcons[key]) return cachedIcons[key]
+    if (isKnownIconRef(key)) return DEFAULT_ICON_FALLBACK
   }
-  return escapeHtml(value || '↗')
+  return escapeHtml(value || DEFAULT_ICON_FALLBACK)
 }
 
 export function isLibraryIcon (value) {
@@ -107,6 +109,10 @@ export async function hydrateIconValues (values) {
 
 function canAutoFetchIcon (key) {
   if (!key || ICON_LIBRARY[key] || cachedIcons[key] || failedIconKeys.has(key)) return false
+  return isKnownIconRef(key)
+}
+
+function isKnownIconRef (key) {
   const prefix = key.slice(0, key.indexOf(':'))
   return AUTO_FETCH_PREFIXES.has(prefix)
 }

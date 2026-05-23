@@ -33,7 +33,7 @@ export async function getState () {
     remoteError: data.remoteError || '',
     customGroups: data.customGroups || [],
     disabled: data.disabled || {},
-    extIcons: !!data.extIcons,
+    extIcons: data.extIcons !== false,
     iconCache: data.iconCache || {},
     telemetryEnabled: data.telemetryEnabled !== false
   }

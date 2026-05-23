@@ -39,7 +39,8 @@ await clearIconCache()
 
 assert.equal(normalizeIconKey('lucid:user'), 'lucide:user')
 assert.deepEqual(toIconifyKey('lucid:user'), { collection: 'lucide', name: 'user' })
-assert.equal(iconHTML('lucide:user'), 'lucide:user')
+assert.equal(iconHTML('lucide:user'), '↗')
+assert.equal(iconHTML('lucid:user'), '↗')
 
 const hydrated = await hydrateIconValues(['lucid:user', 'lucide:globe', 'plain text'])
 assert.deepEqual(hydrated, ['lucide:user'])
